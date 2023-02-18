@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"trait":[["HandoffList","A variadic list of Handoff types, represented using a lisp-style tuple structure."],["PortList",""],["PortListSplit",""]]};

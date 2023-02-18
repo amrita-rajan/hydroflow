@@ -1,0 +1,1 @@
+window.ALL_CRATES = ["hydro_cli","hydroflow","hydroflow_datalog","hydroflow_datalog_core","hydroflow_internalmacro","hydroflow_lang","hydroflow_macro","pusherator","relalg","variadics"];

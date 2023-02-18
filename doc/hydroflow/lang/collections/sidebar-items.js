@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":[["Array",""],["Iter",""],["MaskedArray",""],["Single",""]],"trait":[["Collection",""]]};
