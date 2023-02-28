@@ -66,9 +66,15 @@
 <a href="#66" id="66">66</a>
 <a href="#67" id="67">67</a>
 <a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
 </pre><pre class="rust"><code><span class="kw">use super</span>::{
-    OperatorConstraints, OperatorWriteOutput, WriteContextArgs, WriteIteratorArgs, RANGE_0,
-    RANGE_1, RANGE_ANY,
+    FlowProperties, FlowPropertyVal, OperatorConstraints, OperatorWriteOutput, WriteContextArgs,
+    RANGE_0, RANGE_1, RANGE_ANY,
 };
 
 <span class="kw">use </span>quote::{quote_spanned, ToTokens};
@@ -99,16 +105,22 @@
     is_external_input: <span class="bool-val">false</span>,
     ports_inn: <span class="prelude-val">None</span>,
     ports_out: <span class="prelude-val">None</span>,
-    input_delaytype_fn: <span class="kw-2">&amp;</span>|<span class="kw">_</span>| <span class="prelude-val">None</span>,
-    write_fn: <span class="kw-2">&amp;</span>(|<span class="kw-2">&amp;</span>WriteContextArgs { root, op_span, .. },
-                 <span class="kw-2">&amp;</span>WriteIteratorArgs {
-                     ident,
-                     inputs,
-                     outputs,
-                     is_pull,
-                     ..
-                 },
-                 <span class="kw">_</span>| {
+    properties: FlowProperties {
+        deterministic: FlowPropertyVal::Preserve,
+        monotonic: FlowPropertyVal::Preserve,
+        inconsistency_tainted: <span class="bool-val">false</span>,
+    },
+    input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">None</span>,
+    write_fn: |<span class="kw-2">&amp;</span>WriteContextArgs {
+                   root,
+                   op_span,
+                   ident,
+                   inputs,
+                   outputs,
+                   is_pull,
+                   ..
+               },
+               <span class="kw">_</span>| {
         <span class="kw">let </span>write_iterator = <span class="kw">if </span>!is_pull {
             <span class="kw">let </span>tees = outputs
                 .iter()
@@ -132,7 +144,7 @@
             write_iterator,
             ..Default::default()
         })
-    }),
+    },
 };
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="hydroflow_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (dc1d9d50f 2023-01-31)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-7c23ac01f615ce90.css" ></div></body></html>

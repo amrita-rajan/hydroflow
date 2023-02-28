@@ -66,7 +66,17 @@
 <a href="#66" id="66">66</a>
 <a href="#67" id="67">67</a>
 <a href="#68" id="68">68</a>
-</pre><pre class="rust"><code><span class="kw">use super</span>::{OperatorConstraints, WriteContextArgs, WriteIteratorArgs, RANGE_0, RANGE_1};
+<a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+</pre><pre class="rust"><code><span class="kw">use super</span>::{FlowProperties, FlowPropertyVal};
+<span class="kw">use super</span>::{OperatorConstraints, WriteContextArgs, RANGE_0, RANGE_1};
 
 <span class="kw">use </span>quote::quote_spanned;
 <span class="kw">use </span>syn::parse_quote;
@@ -78,10 +88,9 @@
 ///
 /// ```hydroflow
 /// // should print all 4 pairs of emotion and animal
-/// my_join = cross_join();
 /// source_iter(vec![&quot;happy&quot;, &quot;sad&quot;]) -&gt; [0]my_join;
 /// source_iter(vec![&quot;dog&quot;, &quot;cat&quot;]) -&gt; [1]my_join;
-/// my_join -&gt; for_each(|(v1, v2)| println!(&quot;({}, {})&quot;, v1, v2));
+/// my_join = cross_join() -&gt; for_each(|(v1, v2)| println!(&quot;({}, {})&quot;, v1, v2));
 /// ```
 ///
 /// `cross_join` can also be provided with one or two generic lifetime persistence arguments
@@ -113,13 +122,22 @@
     persistence_args: <span class="kw-2">&amp;</span>(<span class="number">0</span>..=<span class="number">2</span>),
     type_args: RANGE_0,
     is_external_input: <span class="bool-val">false</span>,
-    ports_inn: <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>(|| <span class="kw">super</span>::PortListSpec::Fixed(<span class="macro">parse_quote! </span>{ <span class="number">0</span>, <span class="number">1 </span>}))),
+    ports_inn: <span class="prelude-val">Some</span>(|| <span class="kw">super</span>::PortListSpec::Fixed(<span class="macro">parse_quote! </span>{ <span class="number">0</span>, <span class="number">1 </span>})),
     ports_out: <span class="prelude-val">None</span>,
-    input_delaytype_fn: <span class="kw-2">&amp;</span>|<span class="kw">_</span>| <span class="prelude-val">None</span>,
-    write_fn: <span class="kw-2">&amp;</span>(|wc @ <span class="kw-2">&amp;</span>WriteContextArgs { op_span, .. },
-                 wi @ <span class="kw-2">&amp;</span>WriteIteratorArgs { ident, inputs, .. },
-                 diagnostics| {
-        <span class="kw">let </span><span class="kw-2">mut </span>output = (<span class="kw">super</span>::join::JOIN.write_fn)(wc, wi, diagnostics)<span class="question-mark">?</span>;
+    properties: FlowProperties {
+        deterministic: FlowPropertyVal::Preserve,
+        monotonic: FlowPropertyVal::Preserve,
+        inconsistency_tainted: <span class="bool-val">false</span>,
+    },
+    input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">None</span>,
+    write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs {
+                   op_span,
+                   ident,
+                   inputs,
+                   ..
+               },
+               diagnostics| {
+        <span class="kw">let </span><span class="kw-2">mut </span>output = (<span class="kw">super</span>::join::JOIN.write_fn)(wc, diagnostics)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>lhs = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];
         <span class="kw">let </span>rhs = <span class="kw-2">&amp;</span>inputs[<span class="number">1</span>];
@@ -132,7 +150,7 @@
         );
 
         <span class="prelude-val">Ok</span>(output)
-    }),
+    },
 };
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="hydroflow_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (dc1d9d50f 2023-01-31)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-7c23ac01f615ce90.css" ></div></body></html>

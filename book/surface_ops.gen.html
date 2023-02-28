@@ -161,10 +161,9 @@ in the <code>neg</code> input.</p>
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
 </span>// should print (&quot;elephant&quot;, 3)
-diff = anti_join();
 source_iter(vec![(&quot;dog&quot;, 1), (&quot;cat&quot;, 2), (&quot;elephant&quot;, 3)]) -&gt; [pos]diff;
 source_iter(vec![&quot;dog&quot;, &quot;cat&quot;, &quot;gorilla&quot;]) -&gt; [neg]diff;
-diff -&gt; for_each(|v: (_, _)| println!(&quot;{}, {}&quot;, v.0, v.1));
+diff = anti_join() -&gt; for_each(|v: (_, _)| println!(&quot;{}, {}&quot;, v.0, v.1));
 // elephant 3
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
@@ -195,10 +194,9 @@ tupled pairs.</p>
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
 </span>// should print all 4 pairs of emotion and animal
-my_join = cross_join();
 source_iter(vec![&quot;happy&quot;, &quot;sad&quot;]) -&gt; [0]my_join;
 source_iter(vec![&quot;dog&quot;, &quot;cat&quot;]) -&gt; [1]my_join;
-my_join -&gt; for_each(|(v1, v2)| println!(&quot;({}, {})&quot;, v1, v2));
+my_join = cross_join() -&gt; for_each(|(v1, v2)| println!(&quot;({}, {})&quot;, v1, v2));
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
 </span><span class="boring">    if !__hf.run_tick() {
@@ -397,10 +395,9 @@ streams, returning items in the <code>pos</code> input that are not found in the
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
 </span>// should print &quot;elephant&quot;
-diff = difference();
 source_iter(vec![&quot;dog&quot;, &quot;cat&quot;, &quot;elephant&quot;]) -&gt; [pos]diff;
 source_iter(vec![&quot;dog&quot;, &quot;cat&quot;, &quot;gorilla&quot;]) -&gt; [neg]diff;
-diff -&gt; for_each(|v| println!(&quot;{}&quot;, v));
+diff = difference() -&gt; for_each(|v| println!(&quot;{}&quot;, v));
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
 </span><span class="boring">    if !__hf.run_tick() {
@@ -529,7 +526,7 @@ source_iter(vec![[1, 2], [3, 4], [5, 6]]) -&gt; flatten()
 </span></code></pre></pre>
 <h2 id="fold"><a class="header" href="#fold"><code>fold</code></a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Inputs</th><th>Syntax</th><th>Outputs</th><th>Flow</th></tr></thead><tbody>
-<tr><td><span title="exactly 1">exactly 1</span></td><td><code>-&gt; fold(A, B) -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Streaming</td></tr>
+<tr><td><span title="exactly 1">exactly 1</span></td><td><code>-&gt; fold(A, B) -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Blocking</td></tr>
 </tbody></table>
 </div><!-- GENERATED "hydroflow_lang/src/graph/ops/fold.rs" -->
 <blockquote>
@@ -604,7 +601,7 @@ argument.</p>
 </span></code></pre></pre>
 <h2 id="group_by"><a class="header" href="#group_by"><code>group_by</code></a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Inputs</th><th>Syntax</th><th>Outputs</th><th>Flow</th></tr></thead><tbody>
-<tr><td><span title="exactly 1">exactly 1</span></td><td><code>-&gt; group_by(A, B) -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Streaming</td></tr>
+<tr><td><span title="exactly 1">exactly 1</span></td><td><code>-&gt; group_by(A, B) -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Blocking</td></tr>
 </tbody></table>
 </div><!-- GENERATED "hydroflow_lang/src/graph/ops/group_by.rs" -->
 <blockquote>
@@ -745,10 +742,9 @@ anti-pattern to provide a closure with side effects.</p>
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
 </span>// should print `(hello, (world, cleveland))`
-my_join = join();
 source_iter(vec![(&quot;hello&quot;, &quot;world&quot;), (&quot;stay&quot;, &quot;gold&quot;)]) -&gt; [0]my_join;
 source_iter(vec![(&quot;hello&quot;, &quot;cleveland&quot;)]) -&gt; [1]my_join;
-my_join -&gt; for_each(|(k, (v1, v2))| println!(&quot;({}, ({}, {}))&quot;, k, v1, v2));
+my_join = join() -&gt; for_each(|(k, (v1, v2))| println!(&quot;({}, ({}, {}))&quot;, k, v1, v2));
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
 </span><span class="boring">    if !__hf.run_tick() {
@@ -783,10 +779,9 @@ join::&lt;'tick, 'static&gt;();
 </span><span class="boring">fn main() {
 </span>let (input_send, input_recv) = hydroflow::util::unbounded_channel::&lt;(&amp;str, &amp;str)&gt;();
 let mut flow = hydroflow::hydroflow_syntax! {
-    my_join = join::&lt;'tick&gt;();
     source_iter([(&quot;hello&quot;, &quot;world&quot;)]) -&gt; [0]my_join;
     source_stream(input_recv) -&gt; [1]my_join;
-    my_join -&gt; for_each(|(k, (v1, v2))| println!(&quot;({}, ({}, {}))&quot;, k, v1, v2));
+    my_join = join::&lt;'tick&gt;() -&gt; for_each(|(k, (v1, v2))| println!(&quot;({}, ({}, {}))&quot;, k, v1, v2));
 };
 input_send.send((&quot;hello&quot;, &quot;oakland&quot;)).unwrap();
 flow.run_tick();
@@ -801,10 +796,9 @@ included in the first tick, then forgotten.</p>
 </span><span class="boring">fn main() {
 </span>let (input_send, input_recv) = hydroflow::util::unbounded_channel::&lt;(&amp;str, &amp;str)&gt;();
 let mut flow = hydroflow::hydroflow_syntax! {
-    my_join = join::&lt;'static&gt;();
     source_iter([(&quot;hello&quot;, &quot;world&quot;)]) -&gt; [0]my_join;
     source_stream(input_recv) -&gt; [1]my_join;
-    my_join -&gt; for_each(|(k, (v1, v2))| println!(&quot;({}, ({}, {}))&quot;, k, v1, v2));
+    my_join = join::&lt;'static&gt;() -&gt; for_each(|(k, (v1, v2))| println!(&quot;({}, ({}, {}))&quot;, k, v1, v2));
 };
 input_send.send((&quot;hello&quot;, &quot;oakland&quot;)).unwrap();
 flow.run_tick();
@@ -863,11 +857,10 @@ a variable to reference its multiple input ports across statements.</p>
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
-</span>my_merge = merge();
-source_iter(vec![&quot;hello&quot;, &quot;world&quot;]) -&gt; my_merge;
+</span>source_iter(vec![&quot;hello&quot;, &quot;world&quot;]) -&gt; my_merge;
 source_iter(vec![&quot;stay&quot;, &quot;gold&quot;]) -&gt; my_merge;
 source_iter(vec![&quot;don\'t&quot;, &quot;give&quot;, &quot;up&quot;]) -&gt; my_merge;
-my_merge -&gt; map(|x| x.to_uppercase())
+my_merge = merge() -&gt; map(|x| x.to_uppercase())
     -&gt; for_each(|x| println!(&quot;{}&quot;, x));
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
@@ -880,14 +873,14 @@ my_merge -&gt; map(|x| x.to_uppercase())
 </span></code></pre></pre>
 <h2 id="next_stratum"><a class="header" href="#next_stratum"><code>next_stratum</code></a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Inputs</th><th>Syntax</th><th>Outputs</th><th>Flow</th></tr></thead><tbody>
-<tr><td><span title="exactly 1">exactly 1</span></td><td><code>-&gt; next_stratum() -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Streaming</td></tr>
+<tr><td><span title="exactly 1">exactly 1</span></td><td><code>-&gt; next_stratum() -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Blocking</td></tr>
 </tbody></table>
 </div><!-- GENERATED "hydroflow_lang/src/graph/ops/next_stratum.rs" -->
 <p>Delays all elements which pass through to the next stratum (in the same
 tick).</p>
 <h2 id="next_tick"><a class="header" href="#next_tick"><code>next_tick</code></a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Inputs</th><th>Syntax</th><th>Outputs</th><th>Flow</th></tr></thead><tbody>
-<tr><td><span title="exactly 1">exactly 1</span></td><td><code>-&gt; next_tick() -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Streaming</td></tr>
+<tr><td><span title="exactly 1">exactly 1</span></td><td><code>-&gt; next_tick() -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Blocking</td></tr>
 </tbody></table>
 </div><!-- GENERATED "hydroflow_lang/src/graph/ops/next_tick.rs" -->
 <p>Delays all elements which pass through to the next tick. In short,
@@ -955,7 +948,7 @@ source_iter([4,5,6]) -&gt; map(|i| println!(&quot;{}&quot;, i)) -&gt; [0]null_si
 </span></code></pre></pre>
 <h2 id="reduce"><a class="header" href="#reduce"><code>reduce</code></a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Inputs</th><th>Syntax</th><th>Outputs</th><th>Flow</th></tr></thead><tbody>
-<tr><td><span title="exactly 1">exactly 1</span></td><td><code>-&gt; reduce(A) -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Streaming</td></tr>
+<tr><td><span title="exactly 1">exactly 1</span></td><td><code>-&gt; reduce(A) -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Blocking</td></tr>
 </tbody></table>
 </div><!-- GENERATED "hydroflow_lang/src/graph/ops/reduce.rs" -->
 <blockquote>
@@ -998,7 +991,7 @@ source_iter([1,2,3,4,5])
 </div><!-- GENERATED "hydroflow_lang/src/graph/ops/repeat_iter.rs" -->
 <h2 id="sort"><a class="header" href="#sort"><code>sort</code></a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Inputs</th><th>Syntax</th><th>Outputs</th><th>Flow</th></tr></thead><tbody>
-<tr><td><span title="exactly 1">exactly 1</span></td><td><code>-&gt; sort() -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Streaming</td></tr>
+<tr><td><span title="exactly 1">exactly 1</span></td><td><code>-&gt; sort() -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Blocking</td></tr>
 </tbody></table>
 </div><!-- GENERATED "hydroflow_lang/src/graph/ops/sort.rs" -->
 <p>Takes a stream as input and produces a sorted version of the stream as output.</p>
@@ -1048,7 +1041,7 @@ flow.run_available();
 </span></code></pre></pre>
 <h2 id="sort_by"><a class="header" href="#sort_by"><code>sort_by</code></a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Inputs</th><th>Syntax</th><th>Outputs</th><th>Flow</th></tr></thead><tbody>
-<tr><td><span title="exactly 1">exactly 1</span></td><td><code>-&gt; sort_by(A) -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Streaming</td></tr>
+<tr><td><span title="exactly 1">exactly 1</span></td><td><code>-&gt; sort_by(A) -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Blocking</td></tr>
 </tbody></table>
 </div><!-- GENERATED "hydroflow_lang/src/graph/ops/sort_by.rs" -->
 <p>Takes a stream as input and produces a version of the stream as output
@@ -1214,7 +1207,7 @@ my_tee -&gt; for_each(|x: &amp;str| println!(&quot;{}&quot;, x));
 </span></code></pre></pre>
 <h2 id="unique"><a class="header" href="#unique"><code>unique</code></a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Inputs</th><th>Syntax</th><th>Outputs</th><th>Flow</th></tr></thead><tbody>
-<tr><td><span title="exactly 1">exactly 1</span></td><td><code>-&gt; unique() -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Streaming</td></tr>
+<tr><td><span title="exactly 1">exactly 1</span></td><td><code>-&gt; unique() -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Blocking</td></tr>
 </tbody></table>
 </div><!-- GENERATED "hydroflow_lang/src/graph/ops/unique.rs" -->
 <p>Takes one stream as input and filters out any duplicate occurrences. The output

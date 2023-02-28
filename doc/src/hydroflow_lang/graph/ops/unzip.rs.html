@@ -49,8 +49,16 @@
 <a href="#49" id="49">49</a>
 <a href="#50" id="50">50</a>
 <a href="#51" id="51">51</a>
+<a href="#52" id="52">52</a>
+<a href="#53" id="53">53</a>
+<a href="#54" id="54">54</a>
+<a href="#55" id="55">55</a>
+<a href="#56" id="56">56</a>
+<a href="#57" id="57">57</a>
+<a href="#58" id="58">58</a>
 </pre><pre class="rust"><code><span class="kw">use super</span>::{
-    OperatorConstraints, OperatorWriteOutput, WriteContextArgs, WriteIteratorArgs, RANGE_0, RANGE_1,
+    FlowProperties, FlowPropertyVal, OperatorConstraints, OperatorWriteOutput, WriteContextArgs,
+    RANGE_0, RANGE_1,
 };
 
 <span class="kw">use </span>quote::quote_spanned;
@@ -78,16 +86,22 @@
     type_args: RANGE_0,
     is_external_input: <span class="bool-val">false</span>,
     ports_inn: <span class="prelude-val">None</span>,
-    ports_out: <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>|| <span class="kw">super</span>::PortListSpec::Fixed(<span class="macro">parse_quote!</span>(<span class="number">0</span>, <span class="number">1</span>))),
-    input_delaytype_fn: <span class="kw-2">&amp;</span>|<span class="kw">_</span>| <span class="prelude-val">None</span>,
-    write_fn: <span class="kw-2">&amp;</span>(|<span class="kw-2">&amp;</span>WriteContextArgs { root, op_span, .. },
-                 <span class="kw-2">&amp;</span>WriteIteratorArgs {
-                     ident,
-                     outputs,
-                     is_pull,
-                     ..
-                 },
-                 <span class="kw">_</span>| {
+    ports_out: <span class="prelude-val">Some</span>(|| <span class="kw">super</span>::PortListSpec::Fixed(<span class="macro">parse_quote!</span>(<span class="number">0</span>, <span class="number">1</span>))),
+    properties: FlowProperties {
+        deterministic: FlowPropertyVal::Preserve,
+        monotonic: FlowPropertyVal::Preserve,
+        inconsistency_tainted: <span class="bool-val">false</span>,
+    },
+    input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">None</span>,
+    write_fn: |<span class="kw-2">&amp;</span>WriteContextArgs {
+                   root,
+                   op_span,
+                   ident,
+                   outputs,
+                   is_pull,
+                   ..
+               },
+               <span class="kw">_</span>| {
         <span class="macro">assert!</span>(!is_pull);
         <span class="kw">let </span>output0 = <span class="kw-2">&amp;</span>outputs[<span class="number">0</span>];
         <span class="kw">let </span>output1 = <span class="kw-2">&amp;</span>outputs[<span class="number">1</span>];
@@ -98,7 +112,7 @@
             write_iterator,
             ..Default::default()
         })
-    }),
+    },
 };
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="hydroflow_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (dc1d9d50f 2023-01-31)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-7c23ac01f615ce90.css" ></div></body></html>

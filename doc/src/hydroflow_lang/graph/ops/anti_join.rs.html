@@ -78,11 +78,19 @@
 <a href="#78" id="78">78</a>
 <a href="#79" id="79">79</a>
 <a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::graph::PortIndexValue;
 
+<span class="kw">use super</span>::{FlowProperties, FlowPropertyVal};
+
 <span class="kw">use super</span>::{
-    DelayType, OperatorConstraints, OperatorWriteOutput, WriteContextArgs, WriteIteratorArgs,
-    RANGE_0, RANGE_1,
+    DelayType, OperatorConstraints, OperatorWriteOutput, WriteContextArgs, RANGE_0, RANGE_1,
 };
 
 <span class="kw">use </span>quote::{quote_spanned, ToTokens};
@@ -97,10 +105,9 @@
 ///
 /// ```hydroflow
 /// // should print (&quot;elephant&quot;, 3)
-/// diff = anti_join();
 /// source_iter(vec![(&quot;dog&quot;, 1), (&quot;cat&quot;, 2), (&quot;elephant&quot;, 3)]) -&gt; [pos]diff;
 /// source_iter(vec![&quot;dog&quot;, &quot;cat&quot;, &quot;gorilla&quot;]) -&gt; [neg]diff;
-/// diff -&gt; for_each(|v: (_, _)| println!(&quot;{}, {}&quot;, v.0, v.1));
+/// diff = anti_join() -&gt; for_each(|v: (_, _)| println!(&quot;{}, {}&quot;, v.0, v.1));
 /// // elephant 3
 /// ```
 </span><span class="attr">#[hydroflow_internalmacro::operator_docgen]
@@ -114,25 +121,32 @@
     persistence_args: RANGE_0,
     type_args: RANGE_0,
     is_external_input: <span class="bool-val">false</span>,
-    ports_inn: <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>|| <span class="kw">super</span>::PortListSpec::Fixed(<span class="macro">parse_quote! </span>{ pos, neg })),
+    ports_inn: <span class="prelude-val">Some</span>(|| <span class="kw">super</span>::PortListSpec::Fixed(<span class="macro">parse_quote! </span>{ pos, neg })),
     ports_out: <span class="prelude-val">None</span>,
-    input_delaytype_fn: <span class="kw-2">&amp;</span>|idx| <span class="kw">match </span>idx {
+    properties: FlowProperties {
+        deterministic: FlowPropertyVal::Preserve,
+        monotonic: FlowPropertyVal::No,
+        inconsistency_tainted: <span class="bool-val">false</span>,
+    },
+    input_delaytype_fn: |idx| <span class="kw">match </span>idx {
         PortIndexValue::Path(path) <span class="kw">if </span><span class="string">&quot;neg&quot; </span>== path.to_token_stream().to_string() =&gt; {
             <span class="prelude-val">Some</span>(DelayType::Stratum)
         }
         _else =&gt; <span class="prelude-val">None</span>,
     },
-    write_fn: <span class="kw-2">&amp;</span>(|wc @ <span class="kw-2">&amp;</span>WriteContextArgs {
-                     root,
-                     context,
-                     op_span,
-                     ..
-                 },
-                 <span class="kw-2">&amp;</span>WriteIteratorArgs { ident, inputs, .. },
-                 <span class="kw">_</span>| {
+    write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs {
+                   root,
+                   context,
+                   hydroflow,
+                   op_span,
+                   ident,
+                   inputs,
+                   ..
+               },
+               <span class="kw">_</span>| {
         <span class="kw">let </span>handle_ident = wc.make_ident(<span class="string">&quot;diffdata_handle&quot;</span>);
         <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned! </span>{op_span=&gt;
-            <span class="kw">let </span>#handle_ident = df.add_state(std::cell::RefCell::new(
+            <span class="kw">let </span>#handle_ident = #hydroflow.add_state(std::cell::RefCell::new(
                 #root::lang::monotonic_map::MonotonicMap::&lt;<span class="kw">_</span>, std::collections::HashSet&lt;<span class="kw">_</span>&gt;&gt;::default(),
             ));
         };
@@ -156,7 +170,7 @@
             write_iterator,
             ..Default::default()
         })
-    }),
+    },
 };
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="hydroflow_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (dc1d9d50f 2023-01-31)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-7c23ac01f615ce90.css" ></div></body></html>

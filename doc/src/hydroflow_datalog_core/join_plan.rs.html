@@ -377,19 +377,19 @@
 <a href="#377" id="377">377</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::{btree_map::Entry, BTreeMap, HashMap};
 
-<span class="kw">use </span>hydroflow_lang::{graph::flat_graph::FlatGraph, parse::Pipeline};
+<span class="kw">use </span>hydroflow_lang::{graph::flat_graph::FlatGraphBuilder, parse::Pipeline};
 <span class="kw">use </span>proc_macro2::Span;
 <span class="kw">use </span>syn::{<span class="self">self</span>, parse_quote};
 
 <span class="kw">use crate</span>::{
-    grammar::datalog::{BoolOp, PredicateExpr, RelationExpr},
-    util::Counter,
+    grammar::datalog::{BoolOp, InputRelationExpr, PredicateExpr},
+    util::{repeat_tuple, Counter},
 };
 
 <span class="doccomment">/// Captures the tree of joins used to compute contributions from a single rule.
 </span><span class="kw">pub enum </span>JoinPlan&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="doccomment">/// A single relation without any joins, leaves of the tree.
-    </span>Source(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>RelationExpr),
+    </span>Source(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>InputRelationExpr),
     <span class="doccomment">/// A join between two subtrees.
     </span>Join(Box&lt;JoinPlan&lt;<span class="lifetime">&#39;a</span>&gt;&gt;, Box&lt;JoinPlan&lt;<span class="lifetime">&#39;a</span>&gt;&gt;),
     AntiJoin(Box&lt;JoinPlan&lt;<span class="lifetime">&#39;a</span>&gt;&gt;, Box&lt;JoinPlan&lt;<span class="lifetime">&#39;a</span>&gt;&gt;),
@@ -437,7 +437,7 @@
     <span class="comment">// Whether the pipeline is for an anti-join.
     </span>anti_join: bool,
     <span class="comment">// The Hydroflow graph to emit the pipeline to.
-    </span>flat_graph: <span class="kw-2">&amp;mut </span>FlatGraph,
+    </span>flat_graph_builder: <span class="kw-2">&amp;mut </span>FlatGraphBuilder,
 ) {
     <span class="kw">let </span>hash_keys: Vec&lt;syn::Expr&gt; = identifiers_to_join
         .iter()
@@ -477,7 +477,7 @@
         <span class="prelude-val">None </span>=&gt; <span class="macro">parse_quote!</span>(#source_name -&gt; #rhs),
     };
 
-    flat_graph.add_statement(statement);
+    flat_graph_builder.add_statement(statement);
 }
 
 <span class="doccomment">/// Creates a mapping from variable names to the indices where that variable appears in `fields`.
@@ -536,7 +536,7 @@
     <span class="comment">// The plan we are converting to a Hydroflow pipeline.
     </span>plan: <span class="kw-2">&amp;</span>JoinPlan,
     <span class="comment">// The Hydroflow graph to emit the pipeline to.
-    </span>flat_graph: <span class="kw-2">&amp;mut </span>FlatGraph,
+    </span>flat_graph_builder: <span class="kw-2">&amp;mut </span>FlatGraphBuilder,
     tee_counter: <span class="kw-2">&amp;mut </span>HashMap&lt;String, Counter&gt;,
     next_join_idx: <span class="kw-2">&amp;mut </span>Counter,
 ) -&gt; IntermediateJoinNode {
@@ -587,7 +587,7 @@
 
             <span class="kw">let </span>conditions = build_local_constraint_conditions(<span class="kw-2">&amp;</span>local_constraints);
 
-            flat_graph.add_statement(<span class="macro">parse_quote! </span>{
+            flat_graph_builder.add_statement(<span class="macro">parse_quote! </span>{
                 #filter_node = #relation_node [#relation_idx] -&gt; filter(|<span class="kw-2">&amp;</span>row: <span class="kw-2">&amp;</span>#row_type| #conditions)
             });
 
@@ -601,8 +601,10 @@
         JoinPlan::Join(lhs, rhs) | JoinPlan::AntiJoin(lhs, rhs) =&gt; {
             <span class="kw">let </span>is_anti = <span class="macro">matches!</span>(plan, JoinPlan::AntiJoin(<span class="kw">_</span>, <span class="kw">_</span>));
 
-            <span class="kw">let </span>left_expanded = expand_join_plan(lhs, flat_graph, tee_counter, next_join_idx);
-            <span class="kw">let </span>right_expanded = expand_join_plan(rhs, flat_graph, tee_counter, next_join_idx);
+            <span class="kw">let </span>left_expanded =
+                expand_join_plan(lhs, flat_graph_builder, tee_counter, next_join_idx);
+            <span class="kw">let </span>right_expanded =
+                expand_join_plan(rhs, flat_graph_builder, tee_counter, next_join_idx);
 
             <span class="kw">let </span>identifiers_to_join = right_expanded
                 .variable_mapping
@@ -610,10 +612,8 @@
                 .filter(|i| left_expanded.variable_mapping.contains_key(i))
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
-            <span class="kw">let </span>key_type = identifiers_to_join
-                .iter()
-                .map(|<span class="kw">_</span>| <span class="macro">parse_quote!</span>(<span class="kw">_</span>))
-                .collect::&lt;Vec&lt;syn::Type&gt;&gt;();
+            <span class="kw">let </span>key_type =
+                repeat_tuple::&lt;syn::Type, syn::Type&gt;(|| <span class="macro">parse_quote!</span>(<span class="kw">_</span>), identifiers_to_join.len());
 
             <span class="kw">let </span>left_type = <span class="kw-2">&amp;</span>left_expanded.tuple_type;
             <span class="kw">let </span>right_type = <span class="kw-2">&amp;</span>right_expanded.tuple_type;
@@ -627,10 +627,9 @@
             );
 
             <span class="kw">let </span>intermediate = <span class="kw">if </span>is_anti {
-                <span class="kw">let </span>flatten_closure: syn::Expr =
-                    <span class="macro">parse_quote!</span>(|kv: ((#(#key_type, )<span class="kw-2">*</span>), #left_type)| kv.<span class="number">1</span>);
+                <span class="kw">let </span>flatten_closure: syn::Expr = <span class="macro">parse_quote!</span>(|kv: (#key_type, #left_type)| kv.<span class="number">1</span>);
 
-                flat_graph
+                flat_graph_builder
                     .add_statement(<span class="macro">parse_quote!</span>(#join_node = anti_join() -&gt; map(#flatten_closure)));
 
                 IntermediateJoinNode {
@@ -668,22 +667,22 @@
                     }
                 }
 
-                <span class="kw">let </span>flatten_closure: syn::Expr = <span class="macro">parse_quote!</span>(|kv: ((#(#key_type, )<span class="kw-2">*</span>), (#left_type, #right_type))| (#(#flattened_tuple_elems, )<span class="kw-2">*</span>));
+                <span class="kw">let </span>flatten_closure: syn::Expr = <span class="macro">parse_quote!</span>(|kv: (#key_type, (#left_type, #right_type))| (#(#flattened_tuple_elems, )<span class="kw-2">*</span>));
 
-                flat_graph.add_statement(
+                flat_graph_builder.add_statement(
                     <span class="macro">parse_quote!</span>(#join_node = join::&lt;<span class="lifetime">&#39;tick</span>&gt;() -&gt; map(#flatten_closure)),
                 );
 
-                <span class="kw">let </span>output_types: Vec&lt;syn::Type&gt; = flattened_tuple_elems
-                    .iter()
-                    .map(|<span class="kw">_</span>| <span class="macro">parse_quote!</span>(<span class="kw">_</span>))
-                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+                <span class="kw">let </span>output_type = repeat_tuple::&lt;syn::Type, syn::Type&gt;(
+                    || <span class="macro">parse_quote!</span>(<span class="kw">_</span>),
+                    flattened_tuple_elems.len(),
+                );
 
                 IntermediateJoinNode {
                     name: join_node.clone(),
                     tee_idx: <span class="prelude-val">None</span>,
                     variable_mapping: flattened_mapping,
-                    tuple_type: <span class="macro">parse_quote!</span>((#(#output_types, )<span class="kw-2">*</span>)),
+                    tuple_type: output_type,
                 }
             };
 
@@ -693,7 +692,7 @@
                 <span class="kw-2">&amp;</span>join_node,
                 JoinSide::Left,
                 is_anti,
-                flat_graph,
+                flat_graph_builder,
             );
 
             emit_join_input_pipeline(
@@ -702,13 +701,14 @@
                 <span class="kw-2">&amp;</span>join_node,
                 JoinSide::Right,
                 is_anti,
-                flat_graph,
+                flat_graph_builder,
             );
 
             intermediate
         }
         JoinPlan::Predicate(predicates, inner) =&gt; {
-            <span class="kw">let </span>inner_expanded = expand_join_plan(inner, flat_graph, tee_counter, next_join_idx);
+            <span class="kw">let </span>inner_expanded =
+                expand_join_plan(inner, flat_graph_builder, tee_counter, next_join_idx);
             <span class="kw">let </span>inner_name = inner_expanded.name.clone();
             <span class="kw">let </span>row_type = inner_expanded.tuple_type;
             <span class="kw">let </span>variable_mapping = <span class="kw-2">&amp;</span>inner_expanded.variable_mapping;
@@ -739,7 +739,7 @@
                 Span::call_site(),
             );
 
-            flat_graph.add_statement(<span class="macro">parse_quote! </span>{
+            flat_graph_builder.add_statement(<span class="macro">parse_quote! </span>{
                 #predicate_filter_node = #inner_name -&gt; filter(|<span class="kw-2">&amp;</span>row: <span class="kw-2">&amp;</span>#row_type| #conditions )
             });
 

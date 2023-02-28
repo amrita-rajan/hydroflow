@@ -186,9 +186,20 @@
 <a href="#186" id="186">186</a>
 <a href="#187" id="187">187</a>
 <a href="#188" id="188">188</a>
-</pre><pre class="rust"><code><span class="kw">use super</span>::{
-    OperatorConstraints, OperatorWriteOutput, Persistence, WriteContextArgs, WriteIteratorArgs,
-    RANGE_0, RANGE_1,
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::graph::{OpInstGenerics, OperatorInstance};
+
+<span class="kw">use super</span>::{
+    FlowProperties, FlowPropertyVal, OperatorConstraints, OperatorWriteOutput, Persistence,
+    WriteContextArgs, RANGE_0, RANGE_1,
 };
 
 <span class="kw">use </span>quote::quote_spanned;
@@ -200,10 +211,9 @@
 ///
 /// ```hydroflow
 /// // should print `(hello, (world, cleveland))`
-/// my_join = join();
 /// source_iter(vec![(&quot;hello&quot;, &quot;world&quot;), (&quot;stay&quot;, &quot;gold&quot;)]) -&gt; [0]my_join;
 /// source_iter(vec![(&quot;hello&quot;, &quot;cleveland&quot;)]) -&gt; [1]my_join;
-/// my_join -&gt; for_each(|(k, (v1, v2))| println!(&quot;({}, ({}, {}))&quot;, k, v1, v2));
+/// my_join = join() -&gt; for_each(|(k, (v1, v2))| println!(&quot;({}, ({}, {}))&quot;, k, v1, v2));
 /// ```
 ///
 /// `join` can also be provided with one or two generic lifetime persistence arguments, either
@@ -235,10 +245,9 @@
 /// ```rustbook
 /// let (input_send, input_recv) = hydroflow::util::unbounded_channel::&lt;(&amp;str, &amp;str)&gt;();
 /// let mut flow = hydroflow::hydroflow_syntax! {
-///     my_join = join::&lt;&#39;tick&gt;();
 ///     source_iter([(&quot;hello&quot;, &quot;world&quot;)]) -&gt; [0]my_join;
 ///     source_stream(input_recv) -&gt; [1]my_join;
-///     my_join -&gt; for_each(|(k, (v1, v2))| println!(&quot;({}, ({}, {}))&quot;, k, v1, v2));
+///     my_join = join::&lt;&#39;tick&gt;() -&gt; for_each(|(k, (v1, v2))| println!(&quot;({}, ({}, {}))&quot;, k, v1, v2));
 /// };
 /// input_send.send((&quot;hello&quot;, &quot;oakland&quot;)).unwrap();
 /// flow.run_tick();
@@ -253,10 +262,9 @@
 /// ```rustbook
 /// let (input_send, input_recv) = hydroflow::util::unbounded_channel::&lt;(&amp;str, &amp;str)&gt;();
 /// let mut flow = hydroflow::hydroflow_syntax! {
-///     my_join = join::&lt;&#39;static&gt;();
 ///     source_iter([(&quot;hello&quot;, &quot;world&quot;)]) -&gt; [0]my_join;
 ///     source_stream(input_recv) -&gt; [1]my_join;
-///     my_join -&gt; for_each(|(k, (v1, v2))| println!(&quot;({}, ({}, {}))&quot;, k, v1, v2));
+///     my_join = join::&lt;&#39;static&gt;() -&gt; for_each(|(k, (v1, v2))| println!(&quot;({}, ({}, {}))&quot;, k, v1, v2));
 /// };
 /// input_send.send((&quot;hello&quot;, &quot;oakland&quot;)).unwrap();
 /// flow.run_tick();
@@ -276,23 +284,33 @@
     persistence_args: <span class="kw-2">&amp;</span>(<span class="number">0</span>..=<span class="number">2</span>),
     type_args: RANGE_0,
     is_external_input: <span class="bool-val">false</span>,
-    ports_inn: <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>(|| <span class="kw">super</span>::PortListSpec::Fixed(<span class="macro">parse_quote! </span>{ <span class="number">0</span>, <span class="number">1 </span>}))),
+    ports_inn: <span class="prelude-val">Some</span>(|| <span class="kw">super</span>::PortListSpec::Fixed(<span class="macro">parse_quote! </span>{ <span class="number">0</span>, <span class="number">1 </span>})),
     ports_out: <span class="prelude-val">None</span>,
-    input_delaytype_fn: <span class="kw-2">&amp;</span>|<span class="kw">_</span>| <span class="prelude-val">None</span>,
-    write_fn: <span class="kw-2">&amp;</span>(|wc @ <span class="kw-2">&amp;</span>WriteContextArgs {
-                     root,
-                     context,
-                     op_span,
-                     ..
-                 },
-                 <span class="kw-2">&amp;</span>WriteIteratorArgs {
-                     ident,
-                     inputs,
-                     persistence_args,
-                     ..
-                 },
-                 <span class="kw">_</span>| {
-        <span class="kw">let </span>persistences = <span class="kw">match </span><span class="kw-2">*</span>persistence_args {
+    properties: FlowProperties {
+        deterministic: FlowPropertyVal::Preserve,
+        monotonic: FlowPropertyVal::Preserve,
+        inconsistency_tainted: <span class="bool-val">false</span>,
+    },
+    input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">None</span>,
+    write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs {
+                   root,
+                   context,
+                   hydroflow,
+                   op_span,
+                   ident,
+                   inputs,
+                   op_inst:
+                       OperatorInstance {
+                           generics:
+                               OpInstGenerics {
+                                   persistence_args, ..
+                               },
+                           ..
+                       },
+                   ..
+               },
+               <span class="kw">_</span>| {
+        <span class="kw">let </span>persistences = <span class="kw">match </span>persistence_args[..] {
             [] =&gt; [Persistence::Static, Persistence::Static],
             [a] =&gt; [a, a],
             [a, b] =&gt; [a, b],
@@ -332,10 +350,10 @@
             items;
 
         <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned! </span>{op_span=&gt;
-            <span class="kw">let </span>#lhs_joindata_ident = df.add_state(std::cell::RefCell::new(
+            <span class="kw">let </span>#lhs_joindata_ident = #hydroflow.add_state(std::cell::RefCell::new(
                 #lhs_init
             ));
-            <span class="kw">let </span>#rhs_joindata_ident = df.add_state(std::cell::RefCell::new(
+            <span class="kw">let </span>#rhs_joindata_ident = #hydroflow.add_state(std::cell::RefCell::new(
                 #rhs_init
             ));
         };
@@ -372,7 +390,7 @@
             write_iterator,
             ..Default::default()
         })
-    }),
+    },
 };
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="hydroflow_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (dc1d9d50f 2023-01-31)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-7c23ac01f615ce90.css" ></div></body></html>
