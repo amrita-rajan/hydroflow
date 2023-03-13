@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":[["TerraformBatch",""],["TerraformConfig",""],["TerraformOutput",""],["TerraformProvider",""],["TerraformResult",""],["TerraformResultOutput",""]]};

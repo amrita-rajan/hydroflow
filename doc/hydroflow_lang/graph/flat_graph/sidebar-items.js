@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":[["FlatGraph","A graph representing a hydroflow dataflow graph before subgraph partitioning, stratification, and handoff insertion. I.e. the graph is a simple “flat” without any subgraph heirarchy."],["FlatGraphBuilder",""]]};

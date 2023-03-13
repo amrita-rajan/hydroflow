@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydroflow_datalog_core/src/lib.rs`."><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-2c6d069be585f4e9.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-f501212b8b071243.css"><link rel="stylesheet" disabled href="../../static.files/dark-e92fc12c34ff89d3.css"><link rel="stylesheet" disabled href="../../static.files/ayu-c8c85693c8a4f9db.css"><script id="default-settings" ></script><script src="../../static.files/storage-ff4706381ddb2707.js"></script><script defer src="../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-02cbe07fc548e88c.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../hydroflow_datalog_core/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydroflow_datalog_core/src/lib.rs`."><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e5308b57e507db71.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-d59023bfa12059d2.css"><link rel="stylesheet" disabled href="../../static.files/dark-1ca41bb1e10af075.css"><link rel="stylesheet" disabled href="../../static.files/ayu-18b4181a2f3fb862.css"><script src="../../static.files/storage-3891ce972e3a2bf8.js"></script><script defer src="../../static.files/source-script-1b95b7cca98b26e5.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-98a684e84ae5b08b.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../hydroflow_datalog_core/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -591,11 +591,36 @@
 <a href="#591" id="591">591</a>
 <a href="#592" id="592">592</a>
 <a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
+<a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a>
+<a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
+<a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
+<a href="#611" id="611">611</a>
+<a href="#612" id="612">612</a>
+<a href="#613" id="613">613</a>
+<a href="#614" id="614">614</a>
+<a href="#615" id="615">615</a>
+<a href="#616" id="616">616</a>
+<a href="#617" id="617">617</a>
+<a href="#618" id="618">618</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::{HashMap, HashSet};
 
 <span class="kw">use </span>hydroflow_lang::{
     diagnostic::{Diagnostic, Level},
-    graph::flat_graph::{FlatGraph, FlatGraphBuilder},
+    graph::{partition_graph, FlatGraphBuilder, HydroflowGraph},
     parse::{IndexInt, Indexing, Pipeline, PipelineLink},
 };
 <span class="kw">use </span>proc_macro2::{Span, TokenStream};
@@ -611,19 +636,23 @@
 
 <span class="kw">pub fn </span>gen_hydroflow_graph(
     literal: proc_macro2::Literal,
-) -&gt; <span class="prelude-ty">Result</span>&lt;FlatGraph, (Vec&lt;rust_sitter::errors::ParseError&gt;, Vec&lt;Diagnostic&gt;)&gt; {
+) -&gt; <span class="prelude-ty">Result</span>&lt;HydroflowGraph, (Vec&lt;rust_sitter::errors::ParseError&gt;, Vec&lt;Diagnostic&gt;)&gt; {
     <span class="kw">let </span>str_node: syn::LitStr = <span class="macro">parse_quote!</span>(#literal);
     <span class="kw">let </span>actual_str = str_node.value();
     <span class="kw">let </span>program: Program = grammar::datalog::parse(<span class="kw-2">&amp;</span>actual_str).map_err(|e| (e, <span class="macro">vec!</span>[]))<span class="question-mark">?</span>;
 
     <span class="kw">let </span><span class="kw-2">mut </span>inputs = Vec::new();
     <span class="kw">let </span><span class="kw-2">mut </span>outputs = Vec::new();
+    <span class="kw">let </span><span class="kw-2">mut </span>asyncs = Vec::new();
     <span class="kw">let </span><span class="kw-2">mut </span>rules = Vec::new();
 
     <span class="kw">for </span>stmt <span class="kw">in </span><span class="kw-2">&amp;</span>program.rules {
         <span class="kw">match </span>stmt {
-            Declaration::Input(<span class="kw">_</span>, ident) =&gt; inputs.push(ident),
-            Declaration::Output(<span class="kw">_</span>, ident) =&gt; outputs.push(ident),
+            Declaration::Input(<span class="kw">_</span>, ident, hf_code) =&gt; inputs.push((ident, hf_code)),
+            Declaration::Output(<span class="kw">_</span>, ident, hf_code) =&gt; outputs.push((ident, hf_code)),
+            Declaration::Async(<span class="kw">_</span>, ident, send_hf, recv_hf) =&gt; {
+                asyncs.push((ident, send_hf, recv_hf))
+            }
             Declaration::Rule(rule) =&gt; rules.push(rule),
         }
     }
@@ -635,21 +664,21 @@
     <span class="kw">let </span><span class="kw-2">mut </span>created_rules = HashSet::new();
     <span class="kw">for </span>decl <span class="kw">in </span><span class="kw-2">&amp;</span>program.rules {
         <span class="kw">let </span>target_ident = <span class="kw">match </span>decl {
-            Declaration::Input(<span class="kw">_</span>, ident) =&gt; ident.clone(),
-            Declaration::Output(<span class="kw">_</span>, ident) =&gt; ident.clone(),
+            Declaration::Input(<span class="kw">_</span>, ident, <span class="kw">_</span>) =&gt; ident.clone(),
+            Declaration::Output(<span class="kw">_</span>, ident, <span class="kw">_</span>) =&gt; ident.clone(),
+            Declaration::Async(<span class="kw">_</span>, ident, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; ident.clone(),
             Declaration::Rule(rule) =&gt; rule.target.name.clone(),
         };
 
         <span class="kw">if </span>!created_rules.contains(<span class="kw-2">&amp;</span>target_ident) {
             created_rules.insert(target_ident.clone());
             <span class="kw">let </span>name = syn::Ident::new(<span class="kw-2">&amp;</span>target_ident.name, Span::call_site());
-            flat_graph_builder.add_statement(<span class="macro">parse_quote!</span>(#name = merge() -&gt; tee()));
+            flat_graph_builder
+                .add_statement(<span class="macro">parse_quote!</span>(#name = merge() -&gt; unique::&lt;<span class="lifetime">&#39;tick</span>&gt;() -&gt; tee()));
         }
     }
 
-    <span class="kw">for </span>target <span class="kw">in </span>inputs {
-        <span class="kw">let </span>target_ident = syn::Ident::new(<span class="kw-2">&amp;</span>target.name, Span::call_site());
-
+    <span class="kw">for </span>(target, hf_code) <span class="kw">in </span>inputs {
         <span class="kw">let </span>my_merge_index = merge_counter
             .entry(target.name.clone())
             .or_insert_with(|| <span class="number">0</span>..)
@@ -660,25 +689,53 @@
             syn::LitInt::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, my_merge_index), Span::call_site());
         <span class="kw">let </span>name = syn::Ident::new(<span class="kw-2">&amp;</span>target.name, Span::call_site());
 
+        <span class="kw">let </span>input_pipeline: Pipeline = syn::parse_str(<span class="kw-2">&amp;</span>hf_code.code).unwrap();
+
         flat_graph_builder.add_statement(<span class="macro">parse_quote! </span>{
-            source_stream(#target_ident) -&gt; [#my_merge_index_lit] #name
+            #input_pipeline -&gt; [#my_merge_index_lit] #name
         });
     }
 
-    <span class="kw">for </span>target <span class="kw">in </span>outputs {
+    <span class="kw">for </span>(target, hf_code) <span class="kw">in </span>outputs {
         <span class="kw">let </span>my_tee_index = tee_counter
             .entry(target.name.clone())
             .or_insert_with(|| <span class="number">0</span>..)
             .next()
             .expect(<span class="string">&quot;Out of tee indices&quot;</span>);
 
-        <span class="kw">let </span>out_send_ident = syn::Ident::new(<span class="kw-2">&amp;</span>target.name, Span::call_site());
-
         <span class="kw">let </span>my_tee_index_lit = syn::LitInt::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, my_tee_index), Span::call_site());
         <span class="kw">let </span>target_ident = syn::Ident::new(<span class="kw-2">&amp;</span>target.name, Span::call_site());
 
+        <span class="kw">let </span>output_pipeline: Pipeline = syn::parse_str(<span class="kw-2">&amp;</span>hf_code.code).unwrap();
+
         flat_graph_builder.add_statement(<span class="macro">parse_quote! </span>{
-            #target_ident [#my_tee_index_lit] -&gt; for_each(|v| #out_send_ident.send(v).unwrap())
+            #target_ident [#my_tee_index_lit] -&gt; #output_pipeline
+        });
+    }
+
+    <span class="kw">for </span>(target, send_hf, recv_hf) <span class="kw">in </span>asyncs {
+        <span class="kw">let </span>async_send_pipeline = <span class="macro">format!</span>(<span class="string">&quot;{}_async_send&quot;</span>, target.name);
+        <span class="kw">let </span>async_send_pipeline = syn::Ident::new(<span class="kw-2">&amp;</span>async_send_pipeline, Span::call_site());
+
+        <span class="kw">let </span>recv_merge_index = merge_counter
+            .entry(target.name.clone())
+            .or_insert_with(|| <span class="number">0</span>..)
+            .next()
+            .expect(<span class="string">&quot;Out of merge indices&quot;</span>);
+
+        <span class="kw">let </span>recv_merge_index_lit =
+            syn::LitInt::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, recv_merge_index), Span::call_site());
+        <span class="kw">let </span>target_ident = syn::Ident::new(<span class="kw-2">&amp;</span>target.name, Span::call_site());
+
+        <span class="kw">let </span>send_pipeline: Pipeline = syn::parse_str(<span class="kw-2">&amp;</span>send_hf.code).unwrap();
+        <span class="kw">let </span>recv_pipeline: Pipeline = syn::parse_str(<span class="kw-2">&amp;</span>recv_hf.code).unwrap();
+
+        flat_graph_builder.add_statement(<span class="macro">parse_quote! </span>{
+            #async_send_pipeline = merge() -&gt; #send_pipeline
+        });
+
+        flat_graph_builder.add_statement(<span class="macro">parse_quote! </span>{
+            #recv_pipeline -&gt; [#recv_merge_index_lit] #target_ident
         });
     }
 
@@ -705,11 +762,10 @@
     }
 }
 
-<span class="kw">pub fn </span>hydroflow_graph_to_program(flat_graph: FlatGraph, root: TokenStream) -&gt; syn::Stmt {
-    <span class="kw">let </span>code_tokens = flat_graph
-        .into_partitioned_graph()
-        .expect(<span class="string">&quot;failed to partition&quot;</span>)
-        .as_code(root, <span class="bool-val">true</span>);
+<span class="kw">pub fn </span>hydroflow_graph_to_program(flat_graph: HydroflowGraph, root: TokenStream) -&gt; syn::Stmt {
+    <span class="kw">let </span>partitioned_graph =
+        partition_graph(flat_graph).expect(<span class="string">&quot;Failed to partition (cycle detected).&quot;</span>);
+    <span class="kw">let </span>code_tokens = partitioned_graph.as_code(root, <span class="bool-val">true</span>);
 
     <span class="macro">syn::parse_quote!</span>({
         #code_tokens
@@ -820,18 +876,12 @@
                 rule.target.fields.len() + <span class="number">1</span>,
             );
 
-            <span class="kw">let </span>send_ident = syn::Ident::new(
-                <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;async_send_{}&quot;</span>, <span class="kw-2">&amp;</span>rule.target.name.name),
+            <span class="kw">let </span>send_pipeline_ident = syn::Ident::new(
+                <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}_async_send&quot;</span>, <span class="kw-2">&amp;</span>rule.target.name.name),
                 Span::call_site(),
             );
 
-            <span class="kw">let </span>async_receiver_ident = syn::Ident::new(
-                <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;async_receive_{}&quot;</span>, <span class="kw-2">&amp;</span>rule.target.name.name),
-                Span::call_site(),
-            );
-            flat_graph_builder.add_statement(<span class="macro">parse_quote!</span>(source_stream(#async_receiver_ident) -&gt; [#my_merge_index_lit] #target_ident));
-
-            <span class="macro">parse_quote!</span>(#after_join -&gt; for_each(|v: #v_type| #send_ident(v.#syn_target_index, (#(#exprs_get_data, )<span class="kw-2">*</span>)).unwrap()))
+            <span class="macro">parse_quote!</span>(#after_join -&gt; map(|v: #v_type| (v.#syn_target_index, (#(#exprs_get_data, )<span class="kw-2">*</span>))) -&gt; #send_pipeline_ident)
         }
     };
 
@@ -986,15 +1036,14 @@
 
     <span class="macro">macro_rules! </span>test_snapshots {
         (<span class="macro-nonterminal">$program</span>:literal) =&gt; {
-            <span class="kw">let </span>graph = gen_hydroflow_graph(<span class="macro">parse_quote!</span>(<span class="macro-nonterminal">$program</span>)).unwrap();
+            <span class="kw">let </span>flat_graph = gen_hydroflow_graph(<span class="macro">parse_quote!</span>(<span class="macro-nonterminal">$program</span>)).unwrap();
 
+            <span class="kw">let </span>flat_graph_ref = <span class="kw-2">&amp;</span>flat_graph;
             <span class="macro">insta::with_settings!</span>({snapshot_suffix =&gt; <span class="string">&quot;surface_graph&quot;</span>}, {
-                <span class="macro">insta::assert_display_snapshot!</span>(graph.surface_syntax_string());
+                <span class="macro">insta::assert_display_snapshot!</span>(flat_graph_ref.surface_syntax_string());
             });
 
-            <span class="comment">// Have to make a new graph as the above closure borrows.
-            </span><span class="kw">let </span>graph2 = gen_hydroflow_graph(<span class="macro">parse_quote!</span>(<span class="macro-nonterminal">$program</span>)).unwrap();
-            <span class="kw">let </span>out = <span class="kw-2">&amp;</span>hydroflow_graph_to_program(graph2, <span class="macro">quote::quote! </span>{ hydroflow });
+            <span class="kw">let </span>out = <span class="kw-2">&amp;</span>hydroflow_graph_to_program(flat_graph, <span class="macro">quote::quote! </span>{ hydroflow });
             <span class="kw">let </span>wrapped: syn::File = <span class="macro">parse_quote! </span>{
                 <span class="kw">fn </span>main() {
                     #out
@@ -1013,8 +1062,8 @@
     </span><span class="kw">fn </span>minimal_program() {
         <span class="macro">test_snapshots!</span>(
             <span class="string">r#&quot;
-            .input input
-            .output out
+            .input input `source_stream(input)`
+            .output out `for_each(|v| out.send(v).unwrap())`
 
             out(y, x) :- input(x, y).
             &quot;#
@@ -1025,8 +1074,8 @@
     </span><span class="kw">fn </span>join_with_self() {
         <span class="macro">test_snapshots!</span>(
             <span class="string">r#&quot;
-            .input input
-            .output out
+            .input input `source_stream(input)`
+            .output out `for_each(|v| out.send(v).unwrap())`
 
             out(x, y) :- input(x, y), input(y, x).
             &quot;#
@@ -1037,9 +1086,9 @@
     </span><span class="kw">fn </span>join_with_other() {
         <span class="macro">test_snapshots!</span>(
             <span class="string">r#&quot;
-            .input in1
-            .input in2
-            .output out
+            .input in1 `source_stream(in1)`
+            .input in2 `source_stream(in2)`
+            .output out `for_each(|v| out.send(v).unwrap())`
 
             out(x, y) :- in1(x, y), in2(y, x).
             &quot;#
@@ -1050,9 +1099,9 @@
     </span><span class="kw">fn </span>multiple_contributors() {
         <span class="macro">test_snapshots!</span>(
             <span class="string">r#&quot;
-            .input in1
-            .input in2
-            .output out
+            .input in1 `source_stream(in1)`
+            .input in2 `source_stream(in2)`
+            .output out `for_each(|v| out.send(v).unwrap())`
 
             out(x, y) :- in1(x, y).
             out(x, y) :- in2(y, x).
@@ -1064,9 +1113,9 @@
     </span><span class="kw">fn </span>transitive_closure() {
         <span class="macro">test_snapshots!</span>(
             <span class="string">r#&quot;
-            .input edges
-            .input seed_reachable
-            .output reachable
+            .input edges `source_stream(edges)`
+            .input seed_reachable `source_stream(seed_reachable)`
+            .output reachable `for_each(|v| reachable.send(v).unwrap())`
 
             reachable(x) :- seed_reachable(x).
             reachable(y) :- reachable(x), edges(x, y).
@@ -1078,9 +1127,9 @@
     </span><span class="kw">fn </span>single_column_program() {
         <span class="macro">test_snapshots!</span>(
             <span class="string">r#&quot;
-            .input in1
-            .input in2
-            .output out
+            .input in1 `source_stream(in1)`
+            .input in2 `source_stream(in2)`
+            .output out `for_each(|v| out.send(v).unwrap())`
 
             out(x) :- in1(x), in2(x).
             &quot;#
@@ -1091,10 +1140,10 @@
     </span><span class="kw">fn </span>triple_relation_join() {
         <span class="macro">test_snapshots!</span>(
             <span class="string">r#&quot;
-            .input in1
-            .input in2
-            .input in3
-            .output out
+            .input in1 `source_stream(in1)`
+            .input in2 `source_stream(in2)`
+            .input in3 `source_stream(in3)`
+            .output out `for_each(|v| out.send(v).unwrap())`
 
             out(d, c, b, a) :- in1(a, b), in2(b, c), in3(c, d).
             &quot;#
@@ -1105,8 +1154,8 @@
     </span><span class="kw">fn </span>local_constraints() {
         <span class="macro">test_snapshots!</span>(
             <span class="string">r#&quot;
-            .input input
-            .output out
+            .input input `source_stream(input)`
+            .output out `for_each(|v| out.send(v).unwrap())`
 
             out(x, x) :- input(x, x).
             &quot;#
@@ -1114,8 +1163,8 @@
 
         <span class="macro">test_snapshots!</span>(
             <span class="string">r#&quot;
-            .input input
-            .output out
+            .input input `source_stream(input)`
+            .output out `for_each(|v| out.send(v).unwrap())`
 
             out(x, x, y, y) :- input(x, x, y, y).
             &quot;#
@@ -1126,8 +1175,8 @@
     </span><span class="kw">fn </span>test_simple_filter() {
         <span class="macro">test_snapshots!</span>(
             <span class="string">r#&quot;
-            .input input
-            .output out
+            .input input `source_stream(input)`
+            .output out `for_each(|v| out.send(v).unwrap())`
 
             out(x, y) :- input(x, y), ( x &gt; y ), ( y == x ).
             &quot;#
@@ -1138,10 +1187,10 @@
     </span><span class="kw">fn </span>test_anti_join() {
         <span class="macro">test_snapshots!</span>(
             <span class="string">r#&quot;
-            .input ints_1
-            .input ints_2
-            .input ints_3
-            .output result
+            .input ints_1 `source_stream(ints_1)`
+            .input ints_2 `source_stream(ints_2)`
+            .input ints_3 `source_stream(ints_3)`
+            .output result `for_each(|v| result.send(v).unwrap())`
 
             result(x, z) :- ints_1(x, y), ints_2(y, z), !ints_3(y)
             &quot;#
@@ -1152,8 +1201,8 @@
     </span><span class="kw">fn </span>test_max() {
         <span class="macro">test_snapshots!</span>(
             <span class="string">r#&quot;
-            .input ints
-            .output result
+            .input ints `source_stream(ints)`
+            .output result `for_each(|v| result.send(v).unwrap())`
 
             result(max(a), b) :- ints(a, b)
             &quot;#
@@ -1164,8 +1213,8 @@
     </span><span class="kw">fn </span>test_max_all() {
         <span class="macro">test_snapshots!</span>(
             <span class="string">r#&quot;
-            .input ints
-            .output result
+            .input ints `source_stream(ints)`
+            .output result `for_each(|v| result.send(v).unwrap())`
 
             result(max(a), max(b)) :- ints(a, b)
             &quot;#
@@ -1176,8 +1225,9 @@
     </span><span class="kw">fn </span>test_send_to_node() {
         <span class="macro">test_snapshots!</span>(
             <span class="string">r#&quot;
-            .input ints
-            .output result
+            .input ints `source_stream(ints)`
+            .output result `for_each(|v| result.send(v).unwrap())`
+            .async result `for_each(|(node, data)| async_send_result(node, data))` `source_stream(async_receive_result)`
 
             result@b(a) :~ ints(a, b)
             &quot;#
@@ -1185,4 +1235,4 @@
     }
 }
 </code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="hydroflow_datalog_core" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (dc1d9d50f 2023-01-31)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-7c23ac01f615ce90.css" ></div></body></html>
+</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="hydroflow_datalog_core" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (31f858d9a 2023-02-28)" data-search-js="search-d5a6cd8418084717.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
