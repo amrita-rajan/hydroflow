@@ -654,6 +654,7 @@
 <a href="#654" id="654">654</a>
 <a href="#655" id="655">655</a>
 <a href="#656" id="656">656</a>
+<a href="#657" id="657">657</a>
 </pre><pre class="rust"><code><span class="kw">use </span>rust_sitter::errors::{ParseError, ParseErrorReason};
 <span class="kw">use </span>std::collections::{HashMap, HashSet};
 
@@ -835,7 +836,8 @@
             }
         }
     }
-    <span class="kw">return </span>diagnostics;
+
+    diagnostics
 }
 
 <span class="kw">pub fn </span>hydroflow_graph_to_program(flat_graph: HydroflowGraph, root: TokenStream) -&gt; syn::Stmt {
