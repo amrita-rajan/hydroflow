@@ -555,7 +555,7 @@ allow for data coming in over a network.</p>
 <li>Our first multi-input operator, <a href="./surface_ops.gen.html#join"><code>join</code></a></li>
 <li>Indexing multi-input operators by prepending a bracket expression</li>
 <li>The <a href="./surface_ops.gen.html#unique"><code>unique</code></a> operator for removing duplicates from a stream</li>
-<li>Visualizing hydroflow code via <code>flow.serde_graph().to_mermaid()</code></li>
+<li>Visualizing hydroflow code via <code>flow.meta_graph().to_mermaid()</code></li>
 <li>A first exposure to the concepts of <em>strata</em> and <em>ticks</em></li>
 </ul>
 </blockquote>
@@ -619,7 +619,7 @@ pub fn main() {
 
     println!(
         &quot;{}&quot;,
-        flow.serde_graph()
+        flow.meta_graph()
             .expect(&quot;No graph found, maybe failed to parse.&quot;)
             .to_mermaid()
     );
@@ -680,7 +680,7 @@ Finally we print the neighbor vertices as follows:</p>
 </code></pre>
 <p>The <a href="./surface_ops.gen.html#unique">unique</a> operator removes duplicates from the stream to make things more readable. Note that <code>unique</code> does not run in a streaming fashion, which we will talk about more <a href="example_4_neighbors.html#strata-and-ticks">below</a>.</p>
 <p>There's
-also some extra code here, <code>flow.serde_graph().expect(...).to_mermaid()</code>, which tells
+also some extra code here, <code>flow.meta_graph().expect(...).to_mermaid()</code>, which tells
 Hydroflow to
 generate a diagram rendered by <a href="https://mermaid-js.github.io/">Mermaid</a> showing
 the structure of the graph, and print it to stdout. You can copy that text and paste it into the <a href="https://mermaid-js.github.io/mermaid-live-editor/">Mermaid Live Editor</a> to see the graph, which should look as follows:</p>
@@ -800,7 +800,7 @@ pub fn main() {
 
     println!(
         &quot;{}&quot;,
-        flow.serde_graph()
+        flow.meta_graph()
             .expect(&quot;No graph found, maybe failed to parse.&quot;)
             .to_mermaid()
     );
@@ -962,7 +962,7 @@ pub fn main() {
 
     println!(
         &quot;{}&quot;,
-        flow.serde_graph()
+        flow.meta_graph()
             .expect(&quot;No graph found, maybe failed to parse.&quot;)
             .to_mermaid()
     );
@@ -1404,7 +1404,7 @@ and the code to run the flow graph. To follow along, paste the following into th
 
     if let Some(graph) = graph {
         let serde_graph = df
-            .serde_graph()
+            .meta_graph()
             .expect(&quot;No graph found, maybe failed to parse.&quot;);
         match graph {
             GraphType::Mermaid =&gt; {
@@ -1570,7 +1570,7 @@ when the client receives its sole <code>ConnectResponse</code>.</p>
 <pre><code class="language-rust ignore">    // optionally print the dataflow graph
     if let Some(graph) = opts.graph {
         let serde_graph = hf
-            .serde_graph()
+            .meta_graph()
             .expect(&quot;No graph found, maybe failed to parse.&quot;);
         match graph {
             GraphType::Mermaid =&gt; {
@@ -1848,6 +1848,8 @@ in the <code>neg</code> input.</p>
 </span><span class="boring">fn main() {
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
 </span>// should print (&quot;elephant&quot;, 3)
 source_iter(vec![(&quot;dog&quot;, 1), (&quot;cat&quot;, 2), (&quot;elephant&quot;, 3)]) -&gt; [pos]diff;
@@ -1856,12 +1858,43 @@ diff = anti_join() -&gt; for_each(|v: (_, _)| println!(&quot;{}, {}&quot;, v.0, 
 // elephant 3
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
 </span><span class="boring">    if !__hf.run_tick() {
 </span><span class="boring">        // No work done.
 </span><span class="boring">        break;
 </span><span class="boring">    }
 </span><span class="boring">}
+</span><span class="boring">})
 </span><span class="boring">}
+</span></code></pre></pre>
+<h2 id="batch"><a class="header" href="#batch"><code>batch</code></a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Inputs</th><th>Syntax</th><th>Outputs</th><th>Flow</th></tr></thead><tbody>
+<tr><td><span title="exactly 1">exactly 1</span></td><td><code>-&gt; batch(A) -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Streaming</td></tr>
+</tbody></table>
+</div><!-- GENERATED "hydroflow_lang/src/graph/ops/batch.rs" -->
+<blockquote>
+<p>1 input stream, 1 output stream</p>
+</blockquote>
+<blockquote>
+<p>Arguments: The receive end of a tokio channel that signals when to release the batch downstream.</p>
+</blockquote>
+<p>Given a <a href="https://docs.rs/futures/latest/futures/stream/trait.Stream.html"><code>Stream</code></a>
+created in Rust code, <code>batch</code>
+is passed the receive end of the channel and when receiving any element
+will pass through all received inputs to the output unchanged.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>    let (tx, rx) = hydroflow::util::unbounded_channel::&lt;()&gt;();
+
+    // Will print 0, 1, 2, 3, 4 each on a new line just once.
+    let mut df = hydroflow::hydroflow_syntax! {
+        repeat_iter(0..5) -&gt; batch(rx) -&gt; for_each(|x| { println!(&quot;{x}&quot;); });
+    };
+
+    tx.send(()).unwrap();
+
+    df.run_available();
+<span class="boring">}
 </span></code></pre></pre>
 <h2 id="cross_join"><a class="header" href="#cross_join"><code>cross_join</code></a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Inputs</th><th>Syntax</th><th>Outputs</th><th>Flow</th></tr></thead><tbody>
@@ -1881,6 +1914,8 @@ tupled pairs.</p>
 </span><span class="boring">fn main() {
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
 </span>// should print all 4 pairs of emotion and animal
 source_iter(vec![&quot;happy&quot;, &quot;sad&quot;]) -&gt; [0]my_join;
@@ -1888,11 +1923,13 @@ source_iter(vec![&quot;dog&quot;, &quot;cat&quot;]) -&gt; [1]my_join;
 my_join = cross_join() -&gt; for_each(|(v1, v2)| println!(&quot;({}, {})&quot;, v1, v2));
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
 </span><span class="boring">    if !__hf.run_tick() {
 </span><span class="boring">        // No work done.
 </span><span class="boring">        break;
 </span><span class="boring">    }
 </span><span class="boring">}
+</span><span class="boring">})
 </span><span class="boring">}
 </span></code></pre></pre>
 <p><code>cross_join</code> can also be provided with one or two generic lifetime persistence arguments
@@ -1944,6 +1981,8 @@ trait is automatically imported to enable the <a href="https://hydro-project.git
 </span><span class="boring">fn main() {
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
 </span>my_demux = source_iter(1..=100) -&gt; demux(|v, var_args!(fzbz, fizz, buzz, vals)|
     match (v % 3, v % 5) {
@@ -1959,11 +1998,48 @@ my_demux[buzz] -&gt; for_each(|v| println!(&quot;{}: buzz&quot;, v));
 my_demux[vals] -&gt; for_each(|v| println!(&quot;{}&quot;, v));
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
 </span><span class="boring">    if !__hf.run_tick() {
 </span><span class="boring">        // No work done.
 </span><span class="boring">        break;
 </span><span class="boring">    }
 </span><span class="boring">}
+</span><span class="boring">})
+</span><span class="boring">}
+</span></code></pre></pre>
+<h2 id="dest_file"><a class="header" href="#dest_file"><code>dest_file</code></a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Inputs</th><th>Syntax</th><th>Outputs</th><th>Flow</th></tr></thead><tbody>
+<tr><td><span title="exactly 1">exactly 1</span></td><td><code>-&gt; dest_file(A, B)</code></td><td><span title="exactly 0">exactly 0</span></td><td>Streaming</td></tr>
+</tbody></table>
+</div><!-- GENERATED "hydroflow_lang/src/graph/ops/dest_file.rs" -->
+<blockquote>
+<p>0 input streams, 1 output stream</p>
+</blockquote>
+<blockquote>
+<p>Arguments: (1) An <a href="https://doc.rust-lang.org/std/convert/trait.AsRef.html"><code>AsRef</code></a><code>&lt;</code><a href="https://doc.rust-lang.org/nightly/std/path/struct.Path.html"><code>Path</code></a><code>&gt;</code>
+for a file to write to, and (2) a bool <code>append</code>.</p>
+</blockquote>
+<p>Consumes <code>String</code>s by writing them as lines to a file. The file will be created if it doesn't
+exist. Lines will be appended to the file if <code>append</code> is true, otherwise the file will be
+truncated before lines are written.</p>
+<p>Note this operator must be used within a Tokio runtime.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
+</span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
+</span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
+</span>source_iter(1..=10) -&gt; map(|n| format!(&quot;Line {}&quot;, n)) -&gt; dest_file(&quot;dest.txt&quot;, false);
+<span class="boring">};
+</span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
+</span><span class="boring">    if !__hf.run_tick() {
+</span><span class="boring">        // No work done.
+</span><span class="boring">        break;
+</span><span class="boring">    }
+</span><span class="boring">}
+</span><span class="boring">})
 </span><span class="boring">}
 </span></code></pre></pre>
 <h2 id="dest_sink"><a class="header" href="#dest_sink"><code>dest_sink</code></a></h2>
@@ -2082,6 +2158,8 @@ streams, returning items in the <code>pos</code> input that are not found in the
 </span><span class="boring">fn main() {
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
 </span>// should print &quot;elephant&quot;
 source_iter(vec![&quot;dog&quot;, &quot;cat&quot;, &quot;elephant&quot;]) -&gt; [pos]diff;
@@ -2089,11 +2167,46 @@ source_iter(vec![&quot;dog&quot;, &quot;cat&quot;, &quot;gorilla&quot;]) -&gt; [
 diff = difference() -&gt; for_each(|v| println!(&quot;{}&quot;, v));
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
 </span><span class="boring">    if !__hf.run_tick() {
 </span><span class="boring">        // No work done.
 </span><span class="boring">        break;
 </span><span class="boring">    }
 </span><span class="boring">}
+</span><span class="boring">})
+</span><span class="boring">}
+</span></code></pre></pre>
+<h2 id="enumerate"><a class="header" href="#enumerate"><code>enumerate</code></a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Inputs</th><th>Syntax</th><th>Outputs</th><th>Flow</th></tr></thead><tbody>
+<tr><td><span title="exactly 1">exactly 1</span></td><td><code>-&gt; enumerate() -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Streaming</td></tr>
+</tbody></table>
+</div><!-- GENERATED "hydroflow_lang/src/graph/ops/enumerate.rs" -->
+<blockquote>
+<p>1 input stream of type <code>T</code>, 1 output stream of type <code>(usize, T)</code></p>
+</blockquote>
+<p>For each item passed in, enumerate it with its index: <code>(0, x_0)</code>, <code>(1, x_1)</code>, etc.</p>
+<p><code>enumerate</code> can also be provided with one generic lifetime persistence argument, either
+<code>'tick</code> or <code>'static</code>, to specify if indexing resets. If <code>'tick</code> is specified, indexing will
+restart at zero at the start of each tick. Otherwise <code>'static</code> (the default) will never reset
+and count monotonically upwards.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
+</span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
+</span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
+</span>source_iter(vec![&quot;hello&quot;, &quot;world&quot;]) -&gt; enumerate()
+    -&gt; for_each(|(i, x)| println!(&quot;{}: {}&quot;, i, x));
+<span class="boring">};
+</span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
+</span><span class="boring">    if !__hf.run_tick() {
+</span><span class="boring">        // No work done.
+</span><span class="boring">        break;
+</span><span class="boring">    }
+</span><span class="boring">}
+</span><span class="boring">})
 </span><span class="boring">}
 </span></code></pre></pre>
 <h2 id="filter"><a class="header" href="#filter"><code>filter</code></a></h2>
@@ -2113,16 +2226,20 @@ use <a href="surface_ops.gen.html#filter_map"><code>filter_map</code></a> instea
 </span><span class="boring">fn main() {
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
 </span>source_iter(vec![&quot;hello&quot;, &quot;world&quot;]) -&gt; filter(|x| x.starts_with('w'))
     -&gt; for_each(|x| println!(&quot;{}&quot;, x));
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
 </span><span class="boring">    if !__hf.run_tick() {
 </span><span class="boring">        // No work done.
 </span><span class="boring">        break;
 </span><span class="boring">    }
 </span><span class="boring">}
+</span><span class="boring">})
 </span><span class="boring">}
 </span></code></pre></pre>
 <h2 id="filter_map"><a class="header" href="#filter_map"><code>filter_map</code></a></h2>
@@ -2141,16 +2258,20 @@ use <a href="surface_ops.gen.html#filter_map"><code>filter_map</code></a> instea
 </span><span class="boring">fn main() {
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
 </span>source_iter(vec![&quot;1&quot;, &quot;hello&quot;, &quot;world&quot;, &quot;2&quot;]) -&gt; filter_map(|s| s.parse().ok())
     -&gt; for_each(|x: usize| println!(&quot;{}&quot;, x));
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
 </span><span class="boring">    if !__hf.run_tick() {
 </span><span class="boring">        // No work done.
 </span><span class="boring">        break;
 </span><span class="boring">    }
 </span><span class="boring">}
+</span><span class="boring">})
 </span><span class="boring">}
 </span></code></pre></pre>
 <h2 id="flat_map"><a class="header" href="#flat_map"><code>flat_map</code></a></h2>
@@ -2173,17 +2294,21 @@ iterator to produce items one by one. The type of the input items must be iterab
 </span><span class="boring">fn main() {
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
 </span>// should print out each character of each word on a separate line
 source_iter(vec![&quot;hello&quot;, &quot;world&quot;]) -&gt; flat_map(|x| x.chars())
     -&gt; for_each(|x| println!(&quot;{}&quot;, x));
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
 </span><span class="boring">    if !__hf.run_tick() {
 </span><span class="boring">        // No work done.
 </span><span class="boring">        break;
 </span><span class="boring">    }
 </span><span class="boring">}
+</span><span class="boring">})
 </span><span class="boring">}
 </span></code></pre></pre>
 <h2 id="flatten"><a class="header" href="#flatten"><code>flatten</code></a></h2>
@@ -2200,17 +2325,21 @@ The type of the input items must be iterable.</p>
 </span><span class="boring">fn main() {
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
 </span>// should print the numbers 1-6 without any nesting
 source_iter(vec![[1, 2], [3, 4], [5, 6]]) -&gt; flatten()
 -&gt; for_each(|x| println!(&quot;{}&quot;, x));
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
 </span><span class="boring">    if !__hf.run_tick() {
 </span><span class="boring">        // No work done.
 </span><span class="boring">        break;
 </span><span class="boring">    }
 </span><span class="boring">}
+</span><span class="boring">})
 </span><span class="boring">}
 </span></code></pre></pre>
 <h2 id="fold"><a class="header" href="#fold"><code>fold</code></a></h2>
@@ -2239,6 +2368,8 @@ defaults to <code>'static</code>.</p>
 </span><span class="boring">fn main() {
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
 </span>// should print `Reassembled vector [1,2,3,4,5]`
 source_iter([1,2,3,4,5])
@@ -2249,11 +2380,13 @@ source_iter([1,2,3,4,5])
     -&gt; for_each(|e| println!(&quot;Ressembled vector {:?}&quot;, e));
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
 </span><span class="boring">    if !__hf.run_tick() {
 </span><span class="boring">        // No work done.
 </span><span class="boring">        break;
 </span><span class="boring">    }
 </span><span class="boring">}
+</span><span class="boring">})
 </span><span class="boring">}
 </span></code></pre></pre>
 <h2 id="for_each"><a class="header" href="#for_each"><code>for_each</code></a></h2>
@@ -2276,16 +2409,20 @@ argument.</p>
 </span><span class="boring">fn main() {
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
 </span>    source_iter(vec![&quot;Hello&quot;, &quot;World&quot;])
         -&gt; for_each(|x| println!(&quot;{}&quot;, x));
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
 </span><span class="boring">    if !__hf.run_tick() {
 </span><span class="boring">        // No work done.
 </span><span class="boring">        break;
 </span><span class="boring">    }
 </span><span class="boring">}
+</span><span class="boring">})
 </span><span class="boring">}
 </span></code></pre></pre>
 <h2 id="group_by"><a class="header" href="#group_by"><code>group_by</code></a></h2>
@@ -2293,69 +2430,7 @@ argument.</p>
 <tr><td><span title="exactly 1">exactly 1</span></td><td><code>-&gt; group_by(A, B) -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Blocking</td></tr>
 </tbody></table>
 </div><!-- GENERATED "hydroflow_lang/src/graph/ops/group_by.rs" -->
-<blockquote>
-<p>1 input stream of type (K,V1), 1 output stream of type (K,V2).
-The output will have one tuple for each distinct K, with an accumulated value of type V2.</p>
-</blockquote>
-<blockquote>
-<p>Arguments: two Rust closures. The first generates an initial value per group. The second
-itself takes two arguments: an 'accumulator', and an element. The second closure returns the
-value that the accumulator should have for the next iteration.</p>
-</blockquote>
-<p>A special case of <code>fold</code>, in the spirit of SQL's GROUP BY and aggregation constructs. The input
-is partitioned into groups by the first field, and for each group the values in the second
-field are accumulated via the closures in the arguments.</p>
-<blockquote>
-<p>Note: The closures have access to the <a href="surface_flows.html#the-context-object"><code>context</code> object</a>.</p>
-</blockquote>
-<p><code>group_by</code> can also be provided with one generic lifetime persistence argument, either
-<code>'tick</code> or <code>'static</code>, to specify how data persists. With <code>'tick</code>, values will only be collected
-within the same tick. With <code>'static</code>, values will be remembered across ticks and will be
-aggregated with pairs arriving in later ticks. When not explicitly specified persistence
-defaults to <code>'static</code>.</p>
-<p><code>group_by</code> can also be provided with two type arguments, the key and value type. This is
-required when using <code>'static</code> persistence if the compiler cannot infer the types.</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
-</span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
-</span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
-</span>source_iter([(&quot;toy&quot;, 1), (&quot;toy&quot;, 2), (&quot;shoe&quot;, 11), (&quot;shoe&quot;, 35), (&quot;haberdashery&quot;, 7)])
-    -&gt; group_by(|| 0, |old: &amp;mut u32, val: u32| *old += val)
-    -&gt; for_each(|(k, v)| println!(&quot;Total for group {} is {}&quot;, k, v));
-<span class="boring">};
-</span><span class="boring">for _ in 0..100 {
-</span><span class="boring">    if !__hf.run_tick() {
-</span><span class="boring">        // No work done.
-</span><span class="boring">        break;
-</span><span class="boring">    }
-</span><span class="boring">}
-</span><span class="boring">}
-</span></code></pre></pre>
-<p>Example using <code>'tick</code> persistence:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let (input_send, input_recv) = hydroflow::util::unbounded_channel::&lt;(&amp;str, &amp;str)&gt;();
-let mut flow = hydroflow::hydroflow_syntax! {
-    source_stream(input_recv)
-        -&gt; group_by::&lt;'tick, &amp;str, String&gt;(String::new, |old: &amp;mut _, val| {
-            *old += val;
-            *old += &quot;, &quot;;
-        })
-        -&gt; for_each(|(k, v)| println!(&quot;({:?}, {:?})&quot;, k, v));
-};
-
-input_send.send((&quot;hello&quot;, &quot;oakland&quot;)).unwrap();
-input_send.send((&quot;hello&quot;, &quot;berkeley&quot;)).unwrap();
-input_send.send((&quot;hello&quot;, &quot;san francisco&quot;)).unwrap();
-flow.run_available();
-// (&quot;hello&quot;, &quot;oakland, berkeley, san francisco, &quot;)
-
-input_send.send((&quot;hello&quot;, &quot;palo alto&quot;)).unwrap();
-flow.run_available();
-// (&quot;hello&quot;, &quot;palo alto, &quot;)
-<span class="boring">}
-</span></code></pre></pre>
+<p>An alias for <a href="surface_ops.gen.html#keyed_fold"><code>keyed_fold</code></a>.</p>
 <h2 id="identity"><a class="header" href="#identity"><code>identity</code></a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Inputs</th><th>Syntax</th><th>Outputs</th><th>Flow</th></tr></thead><tbody>
 <tr><td><span title="exactly 1">exactly 1</span></td><td><code>-&gt; identity() -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Streaming</td></tr>
@@ -2369,17 +2444,21 @@ flow.run_available();
 </span><span class="boring">fn main() {
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
 </span>// should print &quot;hello&quot; and &quot;world&quot; on separate lines (in either order)
 source_iter(vec![&quot;hello&quot;, &quot;world&quot;]) -&gt; identity()
     -&gt; for_each(|x| println!(&quot;{}&quot;, x));
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
 </span><span class="boring">    if !__hf.run_tick() {
 </span><span class="boring">        // No work done.
 </span><span class="boring">        break;
 </span><span class="boring">    }
 </span><span class="boring">}
+</span><span class="boring">})
 </span><span class="boring">}
 </span></code></pre></pre>
 <p>You can also supply a type parameter <code>identity::&lt;MyType&gt;()</code> to specify what items flow thru the
@@ -2388,16 +2467,51 @@ the pipeline. This can be useful for helping the compiler infer types.</p>
 </span><span class="boring">fn main() {
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
 </span>// Use type parameter to ensure items are `i32`s.
 source_iter(0..10) -&gt; identity::&lt;i32&gt;() -&gt; for_each(|x| println!(&quot;{}&quot;, x));
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
 </span><span class="boring">    if !__hf.run_tick() {
 </span><span class="boring">        // No work done.
 </span><span class="boring">        break;
 </span><span class="boring">    }
 </span><span class="boring">}
+</span><span class="boring">})
+</span><span class="boring">}
+</span></code></pre></pre>
+<h2 id="initialize"><a class="header" href="#initialize"><code>initialize</code></a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Inputs</th><th>Syntax</th><th>Outputs</th><th>Flow</th></tr></thead><tbody>
+<tr><td><span title="exactly 0">exactly 0</span></td><td><code>initialize() -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Streaming</td></tr>
+</tbody></table>
+</div><!-- GENERATED "hydroflow_lang/src/graph/ops/initialize.rs" -->
+<blockquote>
+<p>0 input streams, 1 output stream</p>
+</blockquote>
+<blockquote>
+<p>Arguments: None.</p>
+</blockquote>
+<p>Emits a single unit <code>()</code> at the start of the first tick.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
+</span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
+</span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
+</span>initialize() -&gt; for_each(|()| println!(&quot;This only runs one time!&quot;));
+<span class="boring">};
+</span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
+</span><span class="boring">    if !__hf.run_tick() {
+</span><span class="boring">        // No work done.
+</span><span class="boring">        break;
+</span><span class="boring">    }
+</span><span class="boring">}
+</span><span class="boring">})
 </span><span class="boring">}
 </span></code></pre></pre>
 <h2 id="inspect"><a class="header" href="#inspect"><code>inspect</code></a></h2>
@@ -2419,15 +2533,19 @@ anti-pattern to provide a closure with side effects.</p>
 </span><span class="boring">fn main() {
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
 </span>source_iter([1, 2, 3, 4]) -&gt; inspect(|&amp;x| println!(&quot;{}&quot;, x)) -&gt; null();
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
 </span><span class="boring">    if !__hf.run_tick() {
 </span><span class="boring">        // No work done.
 </span><span class="boring">        break;
 </span><span class="boring">    }
 </span><span class="boring">}
+</span><span class="boring">})
 </span><span class="boring">}
 </span></code></pre></pre>
 <h2 id="join"><a class="header" href="#join"><code>join</code></a></h2>
@@ -2447,6 +2565,8 @@ anti-pattern to provide a closure with side effects.</p>
 </span><span class="boring">fn main() {
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
 </span>// should print `(hello, (world, cleveland))`
 source_iter(vec![(&quot;hello&quot;, &quot;world&quot;), (&quot;stay&quot;, &quot;gold&quot;)]) -&gt; [0]my_join;
@@ -2454,11 +2574,13 @@ source_iter(vec![(&quot;hello&quot;, &quot;cleveland&quot;)]) -&gt; [1]my_join;
 my_join = join() -&gt; for_each(|(k, (v1, v2))| println!(&quot;({}, ({}, {}))&quot;, k, v1, v2));
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
 </span><span class="boring">    if !__hf.run_tick() {
 </span><span class="boring">        // No work done.
 </span><span class="boring">        break;
 </span><span class="boring">    }
 </span><span class="boring">}
+</span><span class="boring">})
 </span><span class="boring">}
 </span></code></pre></pre>
 <p><code>join</code> can also be provided with one or two generic lifetime persistence arguments, either
@@ -2480,6 +2602,11 @@ join::&lt;'static, 'tick&gt;();
 
 join::&lt;'tick, 'static&gt;();
 // etc.
+</code></pre>
+<p>Join also accepts one type argument that controls how the join state is built up. This (currently) allows switching between a SetUnion and NonSetUnion implementation.
+For example:</p>
+<pre><code class="language-hydroflow ignore">join::&lt;HalfSetJoinState&gt;();
+join::&lt;HalfMultisetJoinState&gt;();
 </code></pre>
 <h3 id="examples"><a class="header" href="#examples">Examples</a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -2515,6 +2642,269 @@ flow.run_tick();
 </span></code></pre></pre>
 <p>Prints out <code>&quot;(hello, (world, oakland))&quot;</code> and <code>&quot;(hello, (world, san francisco))&quot;</code> since the
 inputs are peristed across ticks.</p>
+<h2 id="keyed_fold"><a class="header" href="#keyed_fold"><code>keyed_fold</code></a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Inputs</th><th>Syntax</th><th>Outputs</th><th>Flow</th></tr></thead><tbody>
+<tr><td><span title="exactly 1">exactly 1</span></td><td><code>-&gt; keyed_fold(A, B) -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Blocking</td></tr>
+</tbody></table>
+</div><!-- GENERATED "hydroflow_lang/src/graph/ops/keyed_fold.rs" -->
+<blockquote>
+<p>1 input stream of type <code>(K, V1)</code>, 1 output stream of type <code>(K, V2)</code>.
+The output will have one tuple for each distinct <code>K</code>, with an accumulated value of type <code>V2</code>.</p>
+</blockquote>
+<p>If the input and output value types are the same and do not require initialization then use
+<a href="surface_ops.gen.html#keyed_reduce"><code>keyed_reduce</code></a>.</p>
+<blockquote>
+<p>Arguments: two Rust closures. The first generates an initial value per group. The second
+itself takes two arguments: an 'accumulator', and an element. The second closure returns the
+value that the accumulator should have for the next iteration.</p>
+</blockquote>
+<p>A special case of <code>fold</code>, in the spirit of SQL's GROUP BY and aggregation constructs. The input
+is partitioned into groups by the first field, and for each group the values in the second
+field are accumulated via the closures in the arguments.</p>
+<blockquote>
+<p>Note: The closures have access to the <a href="surface_flows.html#the-context-object"><code>context</code> object</a>.</p>
+</blockquote>
+<p><code>keyed_fold</code> can also be provided with one generic lifetime persistence argument, either
+<code>'tick</code> or <code>'static</code>, to specify how data persists. With <code>'tick</code>, values will only be collected
+within the same tick. With <code>'static</code>, values will be remembered across ticks and will be
+aggregated with pairs arriving in later ticks. When not explicitly specified persistence
+defaults to <code>'static</code>.</p>
+<p><code>keyed_fold</code> can also be provided with two type arguments, the key type <code>K</code> and aggregated
+output value type <code>V2</code>. This is required when using <code>'static</code> persistence if the compiler
+cannot infer the types.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
+</span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
+</span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
+</span>source_iter([(&quot;toy&quot;, 1), (&quot;toy&quot;, 2), (&quot;shoe&quot;, 11), (&quot;shoe&quot;, 35), (&quot;haberdashery&quot;, 7)])
+    -&gt; keyed_fold(|| 0, |old: &amp;mut u32, val: u32| *old += val)
+    -&gt; for_each(|(k, v)| println!(&quot;Total for group {} is {}&quot;, k, v));
+<span class="boring">};
+</span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
+</span><span class="boring">    if !__hf.run_tick() {
+</span><span class="boring">        // No work done.
+</span><span class="boring">        break;
+</span><span class="boring">    }
+</span><span class="boring">}
+</span><span class="boring">})
+</span><span class="boring">}
+</span></code></pre></pre>
+<p>Example using <code>'tick</code> persistence:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let (input_send, input_recv) = hydroflow::util::unbounded_channel::&lt;(&amp;str, &amp;str)&gt;();
+let mut flow = hydroflow::hydroflow_syntax! {
+    source_stream(input_recv)
+        -&gt; keyed_fold::&lt;'tick, &amp;str, String&gt;(String::new, |old: &amp;mut _, val| {
+            *old += val;
+            *old += &quot;, &quot;;
+        })
+        -&gt; for_each(|(k, v)| println!(&quot;({:?}, {:?})&quot;, k, v));
+};
+
+input_send.send((&quot;hello&quot;, &quot;oakland&quot;)).unwrap();
+input_send.send((&quot;hello&quot;, &quot;berkeley&quot;)).unwrap();
+input_send.send((&quot;hello&quot;, &quot;san francisco&quot;)).unwrap();
+flow.run_available();
+// (&quot;hello&quot;, &quot;oakland, berkeley, san francisco, &quot;)
+
+input_send.send((&quot;hello&quot;, &quot;palo alto&quot;)).unwrap();
+flow.run_available();
+// (&quot;hello&quot;, &quot;palo alto, &quot;)
+<span class="boring">}
+</span></code></pre></pre>
+<h2 id="keyed_reduce"><a class="header" href="#keyed_reduce"><code>keyed_reduce</code></a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Inputs</th><th>Syntax</th><th>Outputs</th><th>Flow</th></tr></thead><tbody>
+<tr><td><span title="exactly 1">exactly 1</span></td><td><code>-&gt; keyed_reduce(A) -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Blocking</td></tr>
+</tbody></table>
+</div><!-- GENERATED "hydroflow_lang/src/graph/ops/keyed_reduce.rs" -->
+<blockquote>
+<p>1 input stream of type <code>(K, V)</code>, 1 output stream of type <code>(K, V)</code>.
+The output will have one tuple for each distinct <code>K</code>, with an accumulated (reduced) value of
+type <code>V</code>.</p>
+</blockquote>
+<p>If you need the accumulated value to have a different type, use <a href="surface_ops.gen.html#keyed_fold"><code>keyed_fold</code></a>.</p>
+<blockquote>
+<p>Arguments: one Rust closures. The closure takes two arguments: an <code>&amp;mut</code> 'accumulator', and
+an element. Accumulator should be updated based on the element.</p>
+</blockquote>
+<p>A special case of <code>fold</code>, in the spirit of SQL's GROUP BY and aggregation constructs. The input
+is partitioned into groups by the first field, and for each group the values in the second
+field are accumulated via the closures in the arguments.</p>
+<blockquote>
+<p>Note: The closures have access to the <a href="surface_flows.html#the-context-object"><code>context</code> object</a>.</p>
+</blockquote>
+<p><code>keyed_reduce</code> can also be provided with one generic lifetime persistence argument, either
+<code>'tick</code> or <code>'static</code>, to specify how data persists. With <code>'tick</code>, values will only be collected
+within the same tick. With <code>'static</code>, values will be remembered across ticks and will be
+aggregated with pairs arriving in later ticks. When not explicitly specified persistence
+defaults to <code>'static</code>.</p>
+<p><code>keyed_reduce</code> can also be provided with two type arguments, the key and value type. This is
+required when using <code>'static</code> persistence if the compiler cannot infer the types.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
+</span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
+</span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
+</span>source_iter([(&quot;toy&quot;, 1), (&quot;toy&quot;, 2), (&quot;shoe&quot;, 11), (&quot;shoe&quot;, 35), (&quot;haberdashery&quot;, 7)])
+    -&gt; keyed_reduce(|old: &amp;mut u32, val: u32| *old += val)
+    -&gt; for_each(|(k, v)| println!(&quot;Total for group {} is {}&quot;, k, v));
+<span class="boring">};
+</span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
+</span><span class="boring">    if !__hf.run_tick() {
+</span><span class="boring">        // No work done.
+</span><span class="boring">        break;
+</span><span class="boring">    }
+</span><span class="boring">}
+</span><span class="boring">})
+</span><span class="boring">}
+</span></code></pre></pre>
+<p>Example using <code>'tick</code> persistence:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let (input_send, input_recv) = hydroflow::util::unbounded_channel::&lt;(&amp;str, &amp;str)&gt;();
+let mut flow = hydroflow::hydroflow_syntax! {
+    source_stream(input_recv)
+        -&gt; keyed_reduce::&lt;'tick, &amp;str&gt;(|old: &amp;mut _, val| *old = std::cmp::max(*old, val))
+        -&gt; for_each(|(k, v)| println!(&quot;({:?}, {:?})&quot;, k, v));
+};
+
+input_send.send((&quot;hello&quot;, &quot;oakland&quot;)).unwrap();
+input_send.send((&quot;hello&quot;, &quot;berkeley&quot;)).unwrap();
+input_send.send((&quot;hello&quot;, &quot;san francisco&quot;)).unwrap();
+flow.run_available();
+// (&quot;hello&quot;, &quot;oakland, berkeley, san francisco, &quot;)
+
+input_send.send((&quot;hello&quot;, &quot;palo alto&quot;)).unwrap();
+flow.run_available();
+// (&quot;hello&quot;, &quot;palo alto, &quot;)
+<span class="boring">}
+</span></code></pre></pre>
+<h2 id="lattice_join"><a class="header" href="#lattice_join"><code>lattice_join</code></a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Inputs</th><th>Syntax</th><th>Outputs</th><th>Flow</th></tr></thead><tbody>
+<tr><td><span title="exactly 2">exactly 2</span></td><td><code>-&gt; [&lt;input_port&gt;]lattice_join() -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Streaming</td></tr>
+</tbody></table>
+</div>
+<blockquote>
+<p>Input port names: <code>0</code> (streaming), <code>1</code> (streaming)</p>
+</blockquote>
+<!-- GENERATED "hydroflow_lang/src/graph/ops/lattice_join.rs" -->
+<blockquote>
+<p>2 input streams of type &lt;(K, V1)&gt; and &lt;(K, V2)&gt;, 1 output stream of type &lt;(K, (V1, V2))&gt;</p>
+</blockquote>
+<p>Performs a group-by with lattice-merge aggregate function on LHS and RHS inputs and then forms the
+equijoin of the tuples in the input streams by their first (key) attribute. Note that the result nests the 2nd input field (values) into a tuple in the 2nd output field.</p>
+<p>You must specify the LHS and RHS lattice types, they cannot be inferred.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
+</span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
+</span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
+</span>// should print `(key, (2, 1))`
+my_join = lattice_join::&lt;hydroflow::lang::lattice::ord::MaxRepr&lt;usize&gt;, hydroflow::lang::lattice::ord::MaxRepr&lt;usize&gt;&gt;();
+source_iter(vec![(&quot;key&quot;, 0), (&quot;key&quot;, 2)]) -&gt; [0]my_join;
+source_iter(vec![(&quot;key&quot;, 1)]) -&gt; [1]my_join;
+my_join -&gt; for_each(|(k, (v1, v2))| println!(&quot;({}, ({}, {}))&quot;, k, v1, v2));
+<span class="boring">};
+</span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
+</span><span class="boring">    if !__hf.run_tick() {
+</span><span class="boring">        // No work done.
+</span><span class="boring">        break;
+</span><span class="boring">    }
+</span><span class="boring">}
+</span><span class="boring">})
+</span><span class="boring">}
+</span></code></pre></pre>
+<p><code>lattice_join</code> can also be provided with one or two generic lifetime persistence arguments, either
+<code>'tick</code> or <code>'static</code>, to specify how join data persists. With <code>'tick</code>, pairs will only be
+joined with corresponding pairs within the same tick. With <code>'static</code>, pairs will be remembered
+across ticks and will be joined with pairs arriving in later ticks. When not explicitly
+specified persistence defaults to `static.</p>
+<p>When two persistence arguments are supplied the first maps to port <code>0</code> and the second maps to
+port <code>1</code>.
+When a single persistence argument is supplied, it is applied to both input ports.
+When no persistence arguments are applied it defaults to <code>'static</code> for both.</p>
+<p>The syntax is as follows:</p>
+<pre><code class="language-hydroflow ignore">lattice_join::&lt;MaxRepr&lt;usize&gt;, MaxRepr&lt;usize&gt;&gt;(); // Or
+lattice_join::&lt;'static, MaxRepr&lt;usize&gt;, MaxRepr&lt;usize&gt;&gt;();
+
+lattice_join::&lt;'tick, MaxRepr&lt;usize&gt;, MaxRepr&lt;usize&gt;&gt;();
+
+lattice_join::&lt;'static, 'tick, MaxRepr&lt;usize&gt;, MaxRepr&lt;usize&gt;&gt;();
+
+lattice_join::&lt;'tick, 'static, MaxRepr&lt;usize&gt;, MaxRepr&lt;usize&gt;&gt;();
+// etc.
+</code></pre>
+<h3 id="examples-1"><a class="header" href="#examples-1">Examples</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use hydroflow::lang::lattice::ord::MaxRepr;
+
+let (input_send, input_recv) = hydroflow::util::unbounded_channel::&lt;(usize, usize)&gt;();
+let (out_tx, mut out_rx) = hydroflow::util::unbounded_channel::&lt;(usize, (usize, usize))&gt;();
+
+let mut df = hydroflow::hydroflow_syntax! {
+    my_join = lattice_join::&lt;'tick, MaxRepr&lt;usize&gt;, MaxRepr&lt;usize&gt;&gt;();
+    source_iter([(7, 2), (7, 1)]) -&gt; [0]my_join;
+    source_stream(input_recv) -&gt; [1]my_join;
+    my_join -&gt; for_each(|v| out_tx.send(v).unwrap());
+};
+input_send.send((7, 5)).unwrap();
+df.run_tick();
+let out: Vec&lt;_&gt; = hydroflow::util::collect_ready(&amp;mut out_rx);
+assert_eq!(out, vec![(7, (2, 5))]);
+<span class="boring">}
+</span></code></pre></pre>
+<h2 id="lattice_merge"><a class="header" href="#lattice_merge"><code>lattice_merge</code></a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Inputs</th><th>Syntax</th><th>Outputs</th><th>Flow</th></tr></thead><tbody>
+<tr><td><span title="exactly 1">exactly 1</span></td><td><code>-&gt; lattice_merge() -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Blocking</td></tr>
+</tbody></table>
+</div><!-- GENERATED "hydroflow_lang/src/graph/ops/lattice_merge.rs" -->
+<blockquote>
+<p>1 input stream, 1 output stream</p>
+</blockquote>
+<blockquote>
+<p>Generic parameters: A <a href="https://hydro-project.github.io/hydroflow/doc/hydroflow/lang/lattice/trait.LatticeRepr.html"><code>LatticeRepr</code></a>
+type.</p>
+</blockquote>
+<p>A specialized operator for merging lattices together into a accumulated value. Like <a href="surface_ops.gen.html#fold"><code>fold()</code></a>
+but specialized for lattice types. <code>lattice_merge::&lt;MyLatRepr&gt;()</code> is equivalent to <code>fold(Default::default, &lt;MyLatRepr as LatticeRepr&gt;::merge_owned)</code>.</p>
+<p><code>lattice_merge</code> can also be provided with one generic lifetime persistence argument, either
+<code>'tick</code> or <code>'static</code>, to specify how data persists. With <code>'tick</code>, values will only be collected
+within the same tick. With <code>'static</code>, values will be remembered across ticks and will be
+aggregated with pairs arriving in later ticks. When not explicitly specified persistence
+defaults to <code>'static</code>.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
+</span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
+</span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
+</span>source_iter([1,2,3,4,5])
+    -&gt; lattice_merge::&lt;'static, hydroflow::lang::lattice::ord::MaxRepr&lt;usize&gt;&gt;()
+    -&gt; for_each(|x| println!(&quot;Least upper bound: {}&quot;, x));
+<span class="boring">};
+</span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
+</span><span class="boring">    if !__hf.run_tick() {
+</span><span class="boring">        // No work done.
+</span><span class="boring">        break;
+</span><span class="boring">    }
+</span><span class="boring">}
+</span><span class="boring">})
+</span><span class="boring">}
+</span></code></pre></pre>
 <h2 id="map"><a class="header" href="#map"><code>map</code></a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Inputs</th><th>Syntax</th><th>Outputs</th><th>Flow</th></tr></thead><tbody>
 <tr><td><span title="exactly 1">exactly 1</span></td><td><code>-&gt; map(A) -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Streaming</td></tr>
@@ -2536,16 +2926,20 @@ each item use the <a href="surface_ops.gen.html#inspect"><code>inspect</code></a
 </span><span class="boring">fn main() {
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
 </span>source_iter(vec![&quot;hello&quot;, &quot;world&quot;]) -&gt; map(|x| x.to_uppercase())
     -&gt; for_each(|x| println!(&quot;{}&quot;, x));
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
 </span><span class="boring">    if !__hf.run_tick() {
 </span><span class="boring">        // No work done.
 </span><span class="boring">        break;
 </span><span class="boring">    }
 </span><span class="boring">}
+</span><span class="boring">})
 </span><span class="boring">}
 </span></code></pre></pre>
 <h2 id="merge"><a class="header" href="#merge"><code>merge</code></a></h2>
@@ -2563,6 +2957,8 @@ a variable to reference its multiple input ports across statements.</p>
 </span><span class="boring">fn main() {
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
 </span>source_iter(vec![&quot;hello&quot;, &quot;world&quot;]) -&gt; my_merge;
 source_iter(vec![&quot;stay&quot;, &quot;gold&quot;]) -&gt; my_merge;
@@ -2571,11 +2967,13 @@ my_merge = merge() -&gt; map(|x| x.to_uppercase())
     -&gt; for_each(|x| println!(&quot;{}&quot;, x));
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
 </span><span class="boring">    if !__hf.run_tick() {
 </span><span class="boring">        // No work done.
 </span><span class="boring">        break;
 </span><span class="boring">    }
 </span><span class="boring">}
+</span><span class="boring">})
 </span><span class="boring">}
 </span></code></pre></pre>
 <h2 id="next_stratum"><a class="header" href="#next_stratum"><code>next_stratum</code></a></h2>
@@ -2635,6 +3033,8 @@ flow.run_tick();
 </span><span class="boring">fn main() {
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
 </span>// should print `1, 2, 3, 4, 5, 6, a, b, c` across 9 lines
 null() -&gt; for_each(|_: ()| panic!());
@@ -2646,12 +3046,64 @@ null_src[0] -&gt; for_each(|_: ()| panic!());
 source_iter([4,5,6]) -&gt; map(|i| println!(&quot;{}&quot;, i)) -&gt; [0]null_sink;
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
 </span><span class="boring">    if !__hf.run_tick() {
 </span><span class="boring">        // No work done.
 </span><span class="boring">        break;
 </span><span class="boring">    }
 </span><span class="boring">}
+</span><span class="boring">})
 </span><span class="boring">}
+</span></code></pre></pre>
+<h2 id="persist"><a class="header" href="#persist"><code>persist</code></a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Inputs</th><th>Syntax</th><th>Outputs</th><th>Flow</th></tr></thead><tbody>
+<tr><td><span title="exactly 1">exactly 1</span></td><td><code>-&gt; persist() -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Streaming</td></tr>
+</tbody></table>
+</div><!-- GENERATED "hydroflow_lang/src/graph/ops/persist.rs" -->
+<p>Stores each item as it passes through, and replays all item every tick.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
+</span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
+</span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
+</span>// Normally `source_iter(...)` only emits once, but with `persist()` will replay the `&quot;hello&quot;`
+// on every tick. This is equivalent to `repeat_iter([&quot;hello&quot;])`.
+source_iter([&quot;hello&quot;])
+    -&gt; persist()
+    -&gt; for_each(|item| println!(&quot;{}: {}&quot;, context.current_tick(), item));
+<span class="boring">};
+</span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
+</span><span class="boring">    if !__hf.run_tick() {
+</span><span class="boring">        // No work done.
+</span><span class="boring">        break;
+</span><span class="boring">    }
+</span><span class="boring">}
+</span><span class="boring">})
+</span><span class="boring">}
+</span></code></pre></pre>
+<p><code>persist()</code> can be used to introduce statefulness into stateless pipelines. For example this
+join only stores data for single <code>'tick</code>. The <code>persist()</code> operator introduces statefulness
+across ticks. This can be useful for optimization transformations within the hydroflow
+compiler.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let (input_send, input_recv) = hydroflow::util::unbounded_channel::&lt;(&amp;str, &amp;str)&gt;();
+let mut flow = hydroflow::hydroflow_syntax! {
+    repeat_iter([(&quot;hello&quot;, &quot;world&quot;)]) -&gt; [0]my_join;
+    source_stream(input_recv) -&gt; persist() -&gt; [1]my_join;
+    my_join = join::&lt;'tick&gt;() -&gt; for_each(|(k, (v1, v2))| println!(&quot;({}, ({}, {}))&quot;, k, v1, v2));
+};
+input_send.send((&quot;hello&quot;, &quot;oakland&quot;)).unwrap();
+flow.run_tick();
+input_send.send((&quot;hello&quot;, &quot;san francisco&quot;)).unwrap();
+flow.run_tick();
+// (hello, (world, oakland))
+// (hello, (world, oakland))
+// (hello, (world, san francisco))
+<span class="boring">}
 </span></code></pre></pre>
 <h2 id="reduce"><a class="header" href="#reduce"><code>reduce</code></a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Inputs</th><th>Syntax</th><th>Outputs</th><th>Flow</th></tr></thead><tbody>
@@ -2674,6 +3126,8 @@ returning the final result.</p>
 </span><span class="boring">fn main() {
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
 </span>// should print 120 (i.e., 1*2*3*4*5)
 source_iter([1,2,3,4,5])
@@ -2684,11 +3138,44 @@ source_iter([1,2,3,4,5])
     -&gt; for_each(|e| println!(&quot;{}&quot;, e));
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
 </span><span class="boring">    if !__hf.run_tick() {
 </span><span class="boring">        // No work done.
 </span><span class="boring">        break;
 </span><span class="boring">    }
 </span><span class="boring">}
+</span><span class="boring">})
+</span><span class="boring">}
+</span></code></pre></pre>
+<h2 id="repeat_fn"><a class="header" href="#repeat_fn"><code>repeat_fn</code></a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Inputs</th><th>Syntax</th><th>Outputs</th><th>Flow</th></tr></thead><tbody>
+<tr><td><span title="exactly 0">exactly 0</span></td><td><code>repeat_fn(A, B) -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Streaming</td></tr>
+</tbody></table>
+</div><!-- GENERATED "hydroflow_lang/src/graph/ops/repeat_fn.rs" -->
+<blockquote>
+<p>0 input streams, 1 output stream</p>
+</blockquote>
+<blockquote>
+<p>Arguments: A batch size per tick, and a zero argument closure to produce each item in the stream.
+Similar to <code>repeat_iter</code>, but generates the items by calling the supplied closure instead of cloning them from an input iter</p>
+</blockquote>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
+</span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
+</span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
+</span>    repeat_fn(10, || 7) -&gt; for_each(|x| println!(&quot;{}&quot;, x));
+<span class="boring">};
+</span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
+</span><span class="boring">    if !__hf.run_tick() {
+</span><span class="boring">        // No work done.
+</span><span class="boring">        break;
+</span><span class="boring">    }
+</span><span class="boring">}
+</span><span class="boring">})
 </span><span class="boring">}
 </span></code></pre></pre>
 <h2 id="repeat_iter"><a class="header" href="#repeat_iter"><code>repeat_iter</code></a></h2>
@@ -2696,6 +3183,41 @@ source_iter([1,2,3,4,5])
 <tr><td><span title="exactly 0">exactly 0</span></td><td><code>repeat_iter(A) -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Streaming</td></tr>
 </tbody></table>
 </div><!-- GENERATED "hydroflow_lang/src/graph/ops/repeat_iter.rs" -->
+<blockquote>
+<p>0 input streams, 1 output stream</p>
+</blockquote>
+<blockquote>
+<p>Arguments: An iterable Rust object.
+Similar to <code>source_iter</code>, but delivers all elements from the iterable object
+on every tick (where <code>source_iter</code> only delivers on the first tick).</p>
+</blockquote>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
+</span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
+</span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
+</span>    repeat_iter(vec![&quot;Hello&quot;, &quot;World&quot;])
+        -&gt; for_each(|x| println!(&quot;{}&quot;, x));
+<span class="boring">};
+</span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
+</span><span class="boring">    if !__hf.run_tick() {
+</span><span class="boring">        // No work done.
+</span><span class="boring">        break;
+</span><span class="boring">    }
+</span><span class="boring">}
+</span><span class="boring">})
+</span><span class="boring">}
+</span></code></pre></pre>
+<h2 id="repeat_iter_external"><a class="header" href="#repeat_iter_external"><code>repeat_iter_external</code></a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Inputs</th><th>Syntax</th><th>Outputs</th><th>Flow</th></tr></thead><tbody>
+<tr><td><span title="exactly 0">exactly 0</span></td><td><code>repeat_iter_external(A) -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Streaming</td></tr>
+</tbody></table>
+</div><!-- GENERATED "hydroflow_lang/src/graph/ops/repeat_iter_external.rs" -->
+<p>Same as <a href="surface_ops.gen.html#repeat_iter"><code>repeat_iter</code></a> but treats the iter as external, meaning this operator
+will trigger the start of new ticks in order to repeat, causing spinning-like behavior.</p>
 <h2 id="sort"><a class="header" href="#sort"><code>sort</code></a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Inputs</th><th>Syntax</th><th>Outputs</th><th>Flow</th></tr></thead><tbody>
 <tr><td><span title="exactly 1">exactly 1</span></td><td><code>-&gt; sort() -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Blocking</td></tr>
@@ -2706,6 +3228,8 @@ source_iter([1,2,3,4,5])
 </span><span class="boring">fn main() {
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
 </span>// should print 1, 2, 3 (in order)
 source_iter(vec![2, 3, 1])
@@ -2713,11 +3237,13 @@ source_iter(vec![2, 3, 1])
     -&gt; for_each(|x| println!(&quot;{}&quot;, x));
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
 </span><span class="boring">    if !__hf.run_tick() {
 </span><span class="boring">        // No work done.
 </span><span class="boring">        break;
 </span><span class="boring">    }
 </span><span class="boring">}
+</span><span class="boring">})
 </span><span class="boring">}
 </span></code></pre></pre>
 <p><code>sort</code> can also be provided with one generic lifetime persistence argument, either
@@ -2760,6 +3286,8 @@ sorted according to the key extracted by the closure.</p>
 </span><span class="boring">fn main() {
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
 </span>// should print (1, 'z'), (2, 'y'), (3, 'x') (in order)
 source_iter(vec![(2, 'y'), (3, 'x'), (1, 'z')])
@@ -2767,13 +3295,88 @@ source_iter(vec![(2, 'y'), (3, 'x'), (1, 'z')])
     -&gt; for_each(|x| println!(&quot;{:?}&quot;, x));
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
 </span><span class="boring">    if !__hf.run_tick() {
 </span><span class="boring">        // No work done.
 </span><span class="boring">        break;
 </span><span class="boring">    }
 </span><span class="boring">}
+</span><span class="boring">})
 </span><span class="boring">}
 </span></code></pre></pre>
+<h2 id="source_file"><a class="header" href="#source_file"><code>source_file</code></a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Inputs</th><th>Syntax</th><th>Outputs</th><th>Flow</th></tr></thead><tbody>
+<tr><td><span title="exactly 0">exactly 0</span></td><td><code>source_file(A) -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Streaming</td></tr>
+</tbody></table>
+</div><!-- GENERATED "hydroflow_lang/src/graph/ops/source_file.rs" -->
+<blockquote>
+<p>0 input streams, 1 output stream</p>
+</blockquote>
+<blockquote>
+<p>Arguments: An <a href="https://doc.rust-lang.org/std/convert/trait.AsRef.html"><code>AsRef</code></a><code>&lt;</code><a href="https://doc.rust-lang.org/nightly/std/path/struct.Path.html"><code>Path</code></a><code>&gt;</code>
+for a file to read as json.</p>
+</blockquote>
+<p>Reads the referenced file one line at a time. The line will NOT include the line ending.</p>
+<p>Will panic if the file could not be read, or if the file contains bytes that are not valid UTF-8.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
+</span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
+</span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
+</span>source_file(&quot;Cargo.toml&quot;) -&gt; for_each(|line| println!(&quot;{}&quot;, line));
+<span class="boring">};
+</span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
+</span><span class="boring">    if !__hf.run_tick() {
+</span><span class="boring">        // No work done.
+</span><span class="boring">        break;
+</span><span class="boring">    }
+</span><span class="boring">}
+</span><span class="boring">})
+</span><span class="boring">}
+</span></code></pre></pre>
+<h2 id="source_interval"><a class="header" href="#source_interval"><code>source_interval</code></a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Inputs</th><th>Syntax</th><th>Outputs</th><th>Flow</th></tr></thead><tbody>
+<tr><td><span title="exactly 0">exactly 0</span></td><td><code>source_interval(A) -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Streaming</td></tr>
+</tbody></table>
+</div><!-- GENERATED "hydroflow_lang/src/graph/ops/source_interval.rs" -->
+<blockquote>
+<p>0 input streams, 1 output stream</p>
+</blockquote>
+<blockquote>
+<p>Arguments: A <a href="https://doc.rust-lang.org/stable/std/time/struct.Duration.html"><code>Duration</code></a> for this interval.</p>
+</blockquote>
+<p>Emits <a href="https://docs.rs/tokio/1/tokio/time/struct.Instant.html">Tokio time <code>Instant</code>s</a> on a
+repeated interval. The first tick completes imediately. Missed ticks will be scheduled as soon
+as possible, and the <code>Instant</code> will be the missed time, not the late time.</p>
+<p>Note that this requires the hydroflow instance be run within a <a href="https://docs.rs/tokio/1/tokio/runtime/struct.Runtime.html">Tokio <code>Runtime</code></a>.
+The easiest way to do this is with a <a href="https://docs.rs/tokio/1/tokio/attr.main.html"><code>#[tokio::main]</code></a>
+annotation on <code>async fn main() { ... }</code>.</p>
+<pre><pre class="playground"><code class="language-rust">use std::time::Duration;
+
+use hydroflow::hydroflow_syntax;
+
+#[tokio::main]
+async fn main() {
+    let mut hf = hydroflow_syntax! {
+        source_interval(Duration::from_secs(1))
+            -&gt; for_each(|time| println!(&quot;This runs every second: {:?}&quot;, time));
+    };
+
+    // Will print 4 times (fencepost counting).
+    tokio::time::timeout(Duration::from_secs_f32(3.5), hf.run_async())
+        .await
+        .expect_err(&quot;Expected time out&quot;);
+
+    // Example output:
+    // This runs every second: Instant { t: 27471.704813s }
+    // This runs every second: Instant { t: 27472.704813s }
+    // This runs every second: Instant { t: 27473.704813s }
+    // This runs every second: Instant { t: 27474.704813s }
+}
+</code></pre></pre>
 <h2 id="source_iter-1"><a class="header" href="#source_iter-1"><code>source_iter</code></a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Inputs</th><th>Syntax</th><th>Outputs</th><th>Flow</th></tr></thead><tbody>
 <tr><td><span title="exactly 0">exactly 0</span></td><td><code>source_iter(A) -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Streaming</td></tr>
@@ -2792,16 +3395,52 @@ one by one.</p>
 </span><span class="boring">fn main() {
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
 </span>    source_iter(vec![&quot;Hello&quot;, &quot;World&quot;])
         -&gt; for_each(|x| println!(&quot;{}&quot;, x));
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
 </span><span class="boring">    if !__hf.run_tick() {
 </span><span class="boring">        // No work done.
 </span><span class="boring">        break;
 </span><span class="boring">    }
 </span><span class="boring">}
+</span><span class="boring">})
+</span><span class="boring">}
+</span></code></pre></pre>
+<h2 id="source_json"><a class="header" href="#source_json"><code>source_json</code></a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Inputs</th><th>Syntax</th><th>Outputs</th><th>Flow</th></tr></thead><tbody>
+<tr><td><span title="exactly 0">exactly 0</span></td><td><code>source_json(A) -&gt;</code></td><td><span title="exactly 1">exactly 1</span></td><td>Streaming</td></tr>
+</tbody></table>
+</div><!-- GENERATED "hydroflow_lang/src/graph/ops/source_json.rs" -->
+<blockquote>
+<p>0 input streams, 1 output stream</p>
+</blockquote>
+<blockquote>
+<p>Arguments: An <a href="https://doc.rust-lang.org/std/convert/trait.AsRef.html"><code>AsRef</code></a><code>&lt;</code><a href="https://doc.rust-lang.org/nightly/std/path/struct.Path.html"><code>Path</code></a><code>&gt;</code>
+for a file to read as json. This will emit the parsed value one time.</p>
+</blockquote>
+<p><code>source_json</code> may take one generic type argument, the type of the value to be parsed, which must implement <a href="https://docs.rs/serde/latest/serde/de/trait.Deserialize.html"><code>Deserialize</code></a>.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
+</span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
+</span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
+</span>source_json(&quot;example.json&quot;) -&gt; for_each(|json: hydroflow::serde_json::Value| println!(&quot;{:#?}&quot;, json));
+<span class="boring">};
+</span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
+</span><span class="boring">    if !__hf.run_tick() {
+</span><span class="boring">        // No work done.
+</span><span class="boring">        break;
+</span><span class="boring">    }
+</span><span class="boring">}
+</span><span class="boring">})
 </span><span class="boring">}
 </span></code></pre></pre>
 <h2 id="source_stdin"><a class="header" href="#source_stdin"><code>source_stdin</code></a></h2>
@@ -2873,7 +3512,7 @@ elements it receives downstream.</p>
     let addr = hydroflow::util::ipv4_resolve(&quot;localhost:9000&quot;.into()).unwrap();
     let (outbound, inbound, _) = hydroflow::util::bind_udp_bytes(addr).await;
     let mut flow = hydroflow::hydroflow_syntax! {
-        source_stream_serde(inbound) -&gt; map(|(x, a): (String, std::net::SocketAddr)| x.to_uppercase())
+        source_stream_serde(inbound) -&gt; map(Result::unwrap) -&gt; map(|(x, a): (String, std::net::SocketAddr)| x.to_uppercase())
             -&gt; for_each(|x| println!(&quot;{}&quot;, x));
     };
     flow.run_available();
@@ -2896,6 +3535,8 @@ elements it receives downstream.</p>
 </span><span class="boring">fn main() {
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
 </span>my_tee = source_iter(vec![&quot;Hello&quot;, &quot;World&quot;]) -&gt; tee();
 my_tee -&gt; map(|x: &amp;str| x.to_uppercase())
@@ -2905,11 +3546,13 @@ my_tee -&gt; map(|x: &amp;str| x.to_lowercase())
 my_tee -&gt; for_each(|x: &amp;str| println!(&quot;{}&quot;, x));
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
 </span><span class="boring">    if !__hf.run_tick() {
 </span><span class="boring">        // No work done.
 </span><span class="boring">        break;
 </span><span class="boring">    }
 </span><span class="boring">}
+</span><span class="boring">})
 </span><span class="boring">}
 </span></code></pre></pre>
 <h2 id="unique"><a class="header" href="#unique"><code>unique</code></a></h2>
@@ -2923,6 +3566,8 @@ contains all unique values from the input.</p>
 </span><span class="boring">fn main() {
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
 </span>// should print 1, 2, 3 (in any order)
 source_iter(vec![1, 1, 2, 3, 2, 1, 3])
@@ -2930,11 +3575,13 @@ source_iter(vec![1, 1, 2, 3, 2, 1, 3])
     -&gt; for_each(|x| println!(&quot;{}&quot;, x));
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
 </span><span class="boring">    if !__hf.run_tick() {
 </span><span class="boring">        // No work done.
 </span><span class="boring">        break;
 </span><span class="boring">    }
 </span><span class="boring">}
+</span><span class="boring">})
 </span><span class="boring">}
 </span></code></pre></pre>
 <p><code>unique</code> can also be provided with one generic lifetime persistence argument, either
@@ -2983,17 +3630,21 @@ its corresponding side.</p>
 </span><span class="boring">fn main() {
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::{var_args, var_expr};
 </span><span class="boring">#[allow(unused_imports)] use hydroflow::pusherator::Pusherator;
+</span><span class="boring">let __rt = hydroflow::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+</span><span class="boring">__rt.block_on(async {
 </span><span class="boring">let mut __hf = hydroflow::hydroflow_syntax! {
 </span>my_unzip = source_iter(vec![(&quot;Hello&quot;, &quot;Foo&quot;), (&quot;World&quot;, &quot;Bar&quot;)]) -&gt; unzip();
 my_unzip[0] -&gt; for_each(|x| println!(&quot;0: {}&quot;, x)); // Hello World
 my_unzip[1] -&gt; for_each(|x| println!(&quot;1: {}&quot;, x)); // Foo Bar
 <span class="boring">};
 </span><span class="boring">for _ in 0..100 {
+</span><span class="boring">    hydroflow::tokio::task::yield_now().await;
 </span><span class="boring">    if !__hf.run_tick() {
 </span><span class="boring">        // No work done.
 </span><span class="boring">        break;
 </span><span class="boring">    }
 </span><span class="boring">}
+</span><span class="boring">})
 </span><span class="boring">}
 </span></code></pre></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="state-and-lifetimes"><a class="header" href="#state-and-lifetimes">State and Lifetimes</a></h1>
